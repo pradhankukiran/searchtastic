@@ -5,7 +5,6 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   AlertCircle,
-  CheckCircle2,
   Download,
   Filter,
   Layers3,
@@ -291,14 +290,6 @@ export function SearchApp() {
       })),
     [categories, engines],
   );
-  const listSummary = useMemo(() => {
-    if (!config) {
-      return "Lists unavailable";
-    }
-
-    return `${config.lists.whitelistCount} whitelist / ${config.lists.blacklistCount} blacklist`;
-  }, [config]);
-
   function toggleEngine(engineId: string) {
     setSelectedEngines((current) =>
       current.includes(engineId) ? current.filter((id) => id !== engineId) : [...current, engineId],
@@ -480,26 +471,22 @@ export function SearchApp() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <div className="border-b bg-card/70 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="grid size-9 place-items-center rounded-md border bg-primary text-primary-foreground">
-              <Search className="size-4" />
-            </div>
-            <div>
-              <div className="font-heading text-lg font-medium leading-none tracking-tight">Searchtastic</div>
-              <div className="mt-1 text-xs text-muted-foreground">Filtered metasearch workspace</div>
-            </div>
-          </div>
-          <div className="hidden items-center gap-2 sm:flex">
-            <Badge variant={config?.searxngConfigured ? "default" : "destructive"} className="gap-1.5">
-              {config?.searxngConfigured ? <CheckCircle2 className="size-3" /> : <AlertCircle className="size-3" />}
-              {config?.searxngConfigured ? "Connected" : "Missing URL"}
-            </Badge>
-            <Badge variant="outline">{listSummary}</Badge>
-          </div>
+      <header className="border-b">
+        <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link
+            href="/"
+            className="font-heading text-lg font-medium tracking-tight text-foreground"
+          >
+            Searchtastic
+          </Link>
+          <Link
+            href="/settings"
+            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Settings
+          </Link>
         </div>
-      </div>
+      </header>
 
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
         <section className="space-y-4">
