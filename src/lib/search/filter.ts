@@ -110,6 +110,10 @@ export function filterResults({
     category: result.category,
     domain: result.domain,
     whitelisted: result.whitelisted,
+    thumbnail: result.thumbnail,
+    imgSrc: result.imgSrc,
+    publishedDate: result.publishedDate,
+    resultType: result.resultType,
   }));
 
   return {

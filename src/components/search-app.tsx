@@ -1,9 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   AlertCircle,
   CheckCircle2,
+  Download,
   ExternalLink,
   Filter,
   Globe2,
@@ -35,14 +37,20 @@ import type {
   DomainRuleScope,
   SearchEngine,
   SearchFilterRules,
+  SearchMeta,
   SearchResult,
   SearchStats,
+  SearchTimeRange,
+  SafeSearchLevel,
   WhitelistMode,
 } from "@/lib/search/types";
 
 type ConfigResponse = {
   engines: SearchEngine[];
   categories: string[];
+  searxngCategories: string[];
+  languages: string[];
+  plugins: string[];
   lists: {
     whitelist: string[];
     blacklist: string[];
@@ -55,6 +63,7 @@ type ConfigResponse = {
 type SearchResponse = {
   results: SearchResult[];
   stats: SearchStats;
+  meta: SearchMeta;
   error?: string;
 };
 
@@ -71,6 +80,19 @@ const emptyRuleScope: DomainRuleScope = {
   blacklist: [],
 };
 
+const timeRanges: Array<{ value: SearchTimeRange; label: string }> = [
+  { value: "", label: "Any time" },
+  { value: "day", label: "Past day" },
+  { value: "month", label: "Past month" },
+  { value: "year", label: "Past year" },
+];
+
+const safeSearchLevels: Array<{ value: SafeSearchLevel; label: string }> = [
+  { value: "0", label: "Off" },
+  { value: "1", label: "Moderate" },
+  { value: "2", label: "Strict" },
+];
+
 export function SearchApp() {
   const [query, setQuery] = useState("");
   const [engines, setEngines] = useState<SearchEngine[]>([]);
@@ -79,8 +101,16 @@ export function SearchApp() {
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [stats, setStats] = useState<SearchStats | null>(null);
+  const [meta, setMeta] = useState<SearchMeta | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [page, setPage] = useState(1);
+  const [selectedSearxngCategories, setSelectedSearxngCategories] = useState<string[]>([]);
+  const [language, setLanguage] = useState("");
+  const [timeRange, setTimeRange] = useState<SearchTimeRange>("");
+  const [safeSearch, setSafeSearch] = useState<SafeSearchLevel>("0");
+  const [enabledPlugins, setEnabledPlugins] = useState<string[]>(["Tracker_URL_remover", "Ahmia_blacklist"]);
+  const [imageProxy, setImageProxy] = useState(true);
   const [ruleScope, setRuleScope] = useState<RuleScopeId>("global");
   const [filterRules, setFilterRules] = useState<SearchFilterRules>({
     global: emptyRuleScope,
@@ -116,7 +146,7 @@ export function SearchApp() {
   }, []);
 
   const selectedCount = selectedEngines.length;
-  const canSearch = query.trim().length > 0 && selectedCount > 0 && !searching;
+  const canSearch = query.trim().length > 0 && (selectedCount > 0 || selectedSearxngCategories.length > 0) && !searching;
   const categories = useMemo(() => [...new Set(engines.map((engine) => engine.category))], [engines]);
   const enginesByCategory = useMemo(
     () =>
@@ -154,6 +184,18 @@ export function SearchApp() {
     });
   }
 
+  function toggleSearxngCategory(category: string) {
+    setSelectedSearxngCategories((current) =>
+      current.includes(category) ? current.filter((item) => item !== category) : [...current, category],
+    );
+  }
+
+  function togglePlugin(plugin: string) {
+    setEnabledPlugins((current) =>
+      current.includes(plugin) ? current.filter((item) => item !== plugin) : [...current, plugin],
+    );
+  }
+
   function updateRules(kind: keyof DomainRuleScope, value: string) {
     const domains = parseDomainText(value);
 
@@ -162,13 +204,19 @@ export function SearchApp() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    await runSearch(1, false);
+  }
 
+  async function runSearch(nextPage: number, append: boolean) {
     if (!canSearch) {
       return;
     }
 
     setSearching(true);
-    setStats(null);
+    if (!append) {
+      setStats(null);
+      setMeta(null);
+    }
 
     try {
       const response = await fetch("/api/search", {
@@ -179,8 +227,15 @@ export function SearchApp() {
         body: JSON.stringify({
           query,
           engines: selectedEngines,
+          categories: selectedSearxngCategories,
           whitelistMode,
           filterRules,
+          language,
+          pageno: nextPage,
+          timeRange,
+          safeSearch,
+          enabledPlugins,
+          imageProxy,
         }),
       });
       const payload = (await response.json()) as SearchResponse;
@@ -189,11 +244,15 @@ export function SearchApp() {
         throw new Error(payload.error ?? "Search failed.");
       }
 
-      setResults(payload.results);
+      setResults((current) => (append ? mergeResults(current, payload.results) : payload.results));
       setStats(payload.stats);
+      setMeta(payload.meta);
+      setPage(nextPage);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Search failed.";
-      setResults([]);
+      if (!append) {
+        setResults([]);
+      }
       toast.error(message);
     } finally {
       setSearching(false);
@@ -201,6 +260,7 @@ export function SearchApp() {
   }
 
   const hasResults = results.length > 0;
+  const bangTokens = useMemo(() => query.match(/(^|\s)(![^\s!]+|:[^\s]+)/g)?.map((token) => token.trim()) ?? [], [query]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -384,22 +444,110 @@ export function SearchApp() {
                 </Badge>
               </CardAction>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row">
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search the web"
-                    className="h-11 rounded-md pl-9 text-base"
-                  />
+            <CardContent className="space-y-4">
+              <form onSubmit={onSubmit} className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="relative flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Search the web, or use !github / !science / :fr"
+                      className="h-11 rounded-md pl-9 text-base"
+                    />
+                  </div>
+                  <Button type="submit" disabled={!canSearch} className="h-11 min-w-28">
+                    {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                    Search
+                  </Button>
                 </div>
-                <Button type="submit" disabled={!canSearch} className="h-11 min-w-28">
-                  {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-                  Search
-                </Button>
+
+                <div className="grid gap-3 md:grid-cols-4">
+                  <Field label="Language">
+                    <select
+                      value={language}
+                      onChange={(event) => setLanguage(event.target.value)}
+                      className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      {(config?.languages ?? [""]).map((item) => (
+                        <option key={item || "default"} value={item}>
+                          {item || "Default"}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Time">
+                    <select
+                      value={timeRange}
+                      onChange={(event) => setTimeRange(event.target.value as SearchTimeRange)}
+                      className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      {timeRanges.map((item) => (
+                        <option key={item.value || "any"} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Safe search">
+                    <select
+                      value={safeSearch}
+                      onChange={(event) => setSafeSearch(event.target.value as SafeSearchLevel)}
+                      className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      {safeSearchLevels.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Label className="flex h-full min-h-14 items-center justify-between gap-3 rounded-md border bg-background px-3 text-sm">
+                    <span>Image proxy</span>
+                    <Checkbox checked={imageProxy} onCheckedChange={(checked) => setImageProxy(Boolean(checked))} />
+                  </Label>
+                </div>
               </form>
+
+              {bangTokens.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2 text-xs">
+                  <span className="font-medium text-muted-foreground">Bang syntax</span>
+                  {bangTokens.map((token) => (
+                    <Badge key={token} variant="secondary">
+                      {token}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-muted-foreground">SearXNG categories</div>
+                <div className="flex flex-wrap gap-2">
+                  {(config?.searxngCategories ?? []).map((category) => (
+                    <Button
+                      key={category}
+                      type="button"
+                      size="sm"
+                      variant={selectedSearxngCategories.includes(category) ? "secondary" : "outline"}
+                      onClick={() => toggleSearxngCategory(category)}
+                    >
+                      {category}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-muted-foreground">Plugins</div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {(config?.plugins ?? []).map((plugin) => (
+                    <Label key={plugin} className="flex min-h-9 items-center justify-between rounded-md border px-3 text-xs">
+                      <span>{plugin.replaceAll("_", " ")}</span>
+                      <Checkbox checked={enabledPlugins.includes(plugin)} onCheckedChange={() => togglePlugin(plugin)} />
+                    </Label>
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -423,9 +571,31 @@ export function SearchApp() {
           <Card className="min-h-[360px] rounded-md shadow-sm">
             <CardHeader className="border-b">
               <CardTitle>Results</CardTitle>
-              <CardDescription>{stats ? `${stats.shown} results shown` : "Ready for a search"}</CardDescription>
+              <CardDescription>
+                {stats ? `${results.length} results shown${meta?.numberOfResults ? ` of ${meta.numberOfResults}` : ""}` : "Ready for a search"}
+              </CardDescription>
+              <CardAction className="flex gap-2">
+                <Button type="button" size="sm" variant="outline" disabled={!hasResults} onClick={() => downloadCsv(results)}>
+                  <Download className="size-3.5" />
+                  CSV
+                </Button>
+                <Button type="button" size="sm" variant="outline" disabled={!hasResults} onClick={() => downloadRss(results)}>
+                  <Download className="size-3.5" />
+                  RSS
+                </Button>
+              </CardAction>
             </CardHeader>
             <CardContent className="p-0">
+              {meta ? (
+                <SearchMetaPanel
+                  meta={meta}
+                  onSuggestion={(suggestion) => {
+                    setQuery(suggestion);
+                    toast.info("Suggestion copied into the search box.");
+                  }}
+                />
+              ) : null}
+
               {searching ? (
                 <div className="space-y-3 p-4">
                   <ResultSkeleton />
@@ -474,6 +644,21 @@ export function SearchApp() {
               ) : (
                 <EmptyState />
               )}
+
+              {hasResults ? (
+                <div className="border-t p-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={searching}
+                    onClick={() => runSearch(page + 1, true)}
+                    className="w-full"
+                  >
+                    {searching ? <Loader2 className="size-4 animate-spin" /> : null}
+                    Load more
+                  </Button>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </section>
@@ -487,6 +672,93 @@ function Stat({ label, value }: { label: string; value: number }) {
     <div className="rounded-md border bg-card px-3 py-2 shadow-sm">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function SearchMetaPanel({
+  meta,
+  onSuggestion,
+}: {
+  meta: SearchMeta;
+  onSuggestion: (suggestion: string) => void;
+}) {
+  const hasMeta =
+    meta.suggestions.length > 0 ||
+    meta.answers.length > 0 ||
+    meta.corrections.length > 0 ||
+    meta.infoboxes.length > 0 ||
+    meta.unresponsiveEngines.length > 0;
+
+  if (!hasMeta) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2 border-b bg-muted/20 p-4 text-sm">
+      {meta.answers.length > 0 ? (
+        <div className="rounded-md border bg-background p-3">
+          <div className="mb-1 text-xs font-medium text-muted-foreground">Answers</div>
+          <div className="space-y-1">
+            {meta.answers.map((answer) => (
+              <div key={answer}>{answer}</div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {meta.corrections.length > 0 ? (
+        <MetaChips title="Corrections" items={meta.corrections} onClick={onSuggestion} />
+      ) : null}
+
+      {meta.suggestions.length > 0 ? (
+        <MetaChips title="Suggestions" items={meta.suggestions} onClick={onSuggestion} />
+      ) : null}
+
+      {meta.unresponsiveEngines.length > 0 ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950">
+          <div className="mb-1 text-xs font-medium">Unresponsive engines</div>
+          <div className="flex flex-wrap gap-2">
+            {meta.unresponsiveEngines.map((engine) => (
+              <Badge key={engine} variant="outline">
+                {engine}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MetaChips({
+  title,
+  items,
+  onClick,
+}: {
+  title: string;
+  items: string[];
+  onClick: (item: string) => void;
+}) {
+  return (
+    <div className="rounded-md border bg-background p-3">
+      <div className="mb-2 text-xs font-medium text-muted-foreground">{title}</div>
+      <div className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <Button key={item} type="button" variant="outline" size="sm" onClick={() => onClick(item)}>
+            {item}
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -624,4 +896,75 @@ function splitScope(scopeId: Exclude<RuleScopeId, "global">) {
 
 function engineName(engines: SearchEngine[], engineId: string) {
   return engines.find((engine) => engine.id === engineId)?.name ?? engineId;
+}
+
+function mergeResults(current: SearchResult[], next: SearchResult[]) {
+  const seen = new Set(current.map((result) => result.url));
+
+  return [...current, ...next.filter((result) => !seen.has(result.url))];
+}
+
+function downloadCsv(results: SearchResult[]) {
+  const rows = [
+    ["title", "url", "domain", "engine", "category", "whitelisted", "content"],
+    ...results.map((result) => [
+      result.title,
+      result.url,
+      result.domain,
+      result.engine,
+      result.category,
+      String(result.whitelisted),
+      result.content,
+    ]),
+  ];
+  const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+
+  downloadText("searchtastic-results.csv", "text/csv;charset=utf-8", csv);
+}
+
+function downloadRss(results: SearchResult[]) {
+  const items = results
+    .map(
+      (result) => `<item>
+  <title>${escapeXml(result.title)}</title>
+  <link>${escapeXml(result.url)}</link>
+  <description>${escapeXml(result.content)}</description>
+  <source>${escapeXml(result.engine)}</source>
+</item>`,
+    )
+    .join("\n");
+  const rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+<title>Searchtastic filtered results</title>
+<link>https://searchtastic-web-production.up.railway.app</link>
+<description>Filtered Searchtastic results</description>
+${items}
+</channel>
+</rss>`;
+
+  downloadText("searchtastic-results.rss", "application/rss+xml;charset=utf-8", rss);
+}
+
+function csvCell(value: string) {
+  return `"${value.replaceAll("\"", "\"\"")}"`;
+}
+
+function escapeXml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function downloadText(fileName: string, type: string, content: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
 }

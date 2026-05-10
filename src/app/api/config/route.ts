@@ -14,6 +14,17 @@ export async function GET() {
   return NextResponse.json({
     engines,
     categories: [...new Set(engines.map((engine) => engine.category))],
+    searxngCategories: ["general", "images", "videos", "news", "map", "music", "it", "science", "files", "social media"],
+    languages: ["", "all", "en", "en-US", "de", "fr", "es", "hi"],
+    plugins: [
+      "Tracker_URL_remover",
+      "Ahmia_blacklist",
+      "Open_Access_DOI_rewrite",
+      "Hostnames_plugin",
+      "Hash_plugin",
+      "Self_Information",
+      "Tor_check_plugin",
+    ],
     lists: {
       whitelist,
       blacklist,
