@@ -52,6 +52,10 @@ export const metadata: Metadata = {
   description: "A filtered metasearch app powered by SearXNG.",
 };
 
+// Read SEARXNG_URL at request time, not build time — Railway env vars aren't
+// available during the Docker build step.
+export const dynamic = "force-dynamic";
+
 async function loadAppConfig(): Promise<AppConfig> {
   try {
     const [engines, whitelist, blacklist] = await Promise.all([
