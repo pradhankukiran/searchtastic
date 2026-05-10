@@ -1,4 +1,4 @@
-import type { SearchResult, WhitelistMode } from "@/lib/search/types";
+import type { SearchFilterRules, SearchResult, WhitelistMode } from "@/lib/search/types";
 
 export function getDomain(url: string) {
   try {
@@ -14,6 +14,20 @@ export function domainMatches(domain: string, rules: string[]) {
   }
 
   return rules.some((rule) => domain === rule || domain.endsWith(`.${rule}`));
+}
+
+export function normalizeDomainList(rules: unknown) {
+  if (!Array.isArray(rules)) {
+    return [];
+  }
+
+  return rules
+    .filter((rule): rule is string => typeof rule === "string")
+    .flatMap((rule) => rule.split(/[\n,]/))
+    .map((rule) => rule.trim().toLowerCase())
+    .filter(Boolean)
+    .map((rule) => rule.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0])
+    .filter(Boolean);
 }
 
 export function normalizeUrl(url: string) {
@@ -36,11 +50,15 @@ export function normalizeUrl(url: string) {
 
 export function filterResults({
   results,
-  blacklist,
+  baseWhitelist,
+  baseBlacklist,
+  filterRules,
   whitelistMode,
 }: {
   results: SearchResult[];
-  blacklist: string[];
+  baseWhitelist: string[];
+  baseBlacklist: string[];
+  filterRules: SearchFilterRules;
   whitelistMode: WhitelistMode;
 }) {
   const seen = new Set<string>();
@@ -58,8 +76,17 @@ export function filterResults({
     return true;
   });
 
-  const allowed = deduped.filter((result) => {
-    if (domainMatches(result.domain, blacklist)) {
+  const allowed = deduped.map((result) => {
+    const whitelist = rulesForResult(result, filterRules, "whitelist", baseWhitelist);
+    const blacklist = rulesForResult(result, filterRules, "blacklist", baseBlacklist);
+
+    return {
+      ...result,
+      whitelisted: domainMatches(result.domain, whitelist),
+      blocked: domainMatches(result.domain, blacklist),
+    };
+  }).filter((result) => {
+    if (result.blocked) {
       blacklisted += 1;
       return false;
     }
@@ -75,15 +102,38 @@ export function filterResults({
   if (whitelistMode === "prefer") {
     allowed.sort((a, b) => Number(b.whitelisted) - Number(a.whitelisted));
   }
+  const visibleResults = allowed.map((result) => ({
+    title: result.title,
+    url: result.url,
+    content: result.content,
+    engine: result.engine,
+    category: result.category,
+    domain: result.domain,
+    whitelisted: result.whitelisted,
+  }));
 
   return {
-    results: allowed,
+    results: visibleResults,
     stats: {
       received: results.length,
       deduped: results.length - deduped.length,
       blacklisted,
       whitelistRemoved,
-      shown: allowed.length,
+      shown: visibleResults.length,
     },
   };
+}
+
+function rulesForResult(
+  result: SearchResult,
+  filterRules: SearchFilterRules,
+  kind: "whitelist" | "blacklist",
+  baseRules: string[],
+) {
+  return [
+    ...baseRules,
+    ...normalizeDomainList(filterRules.global?.[kind]),
+    ...normalizeDomainList(filterRules.categories?.[result.category]?.[kind]),
+    ...normalizeDomainList(filterRules.engines?.[result.engine]?.[kind]),
+  ];
 }

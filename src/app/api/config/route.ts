@@ -13,7 +13,10 @@ export async function GET() {
 
   return NextResponse.json({
     engines,
+    categories: [...new Set(engines.map((engine) => engine.category))],
     lists: {
+      whitelist,
+      blacklist,
       whitelistCount: whitelist.length,
       blacklistCount: blacklist.length,
     },

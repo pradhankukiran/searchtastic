@@ -2,26 +2,187 @@
   {
     "id": "google",
     "name": "Google",
+    "category": "web",
     "enabled": true
   },
   {
     "id": "bing",
     "name": "Bing",
+    "category": "web",
     "enabled": true
   },
   {
     "id": "duckduckgo",
     "name": "DuckDuckGo",
+    "category": "web",
     "enabled": true
   },
   {
     "id": "brave",
     "name": "Brave",
+    "category": "web",
     "enabled": false
   },
   {
     "id": "startpage",
     "name": "Startpage",
+    "category": "web",
+    "enabled": false
+  },
+  {
+    "id": "yahoo",
+    "name": "Yahoo",
+    "category": "web",
+    "enabled": false
+  },
+  {
+    "id": "qwant",
+    "name": "Qwant",
+    "category": "web",
+    "enabled": false
+  },
+  {
+    "id": "mojeek",
+    "name": "Mojeek",
+    "category": "web",
+    "enabled": false
+  },
+  {
+    "id": "marginalia",
+    "name": "Marginalia",
+    "category": "web",
+    "enabled": false
+  },
+  {
+    "id": "wiby",
+    "name": "Wiby",
+    "category": "web",
+    "enabled": false
+  },
+  {
+    "id": "yep",
+    "name": "Yep",
+    "category": "web",
+    "enabled": false
+  },
+  {
+    "id": "presearch",
+    "name": "Presearch",
+    "category": "web",
+    "enabled": false
+  },
+  {
+    "id": "github",
+    "name": "GitHub",
+    "category": "developer",
+    "enabled": false
+  },
+  {
+    "id": "stackoverflow",
+    "name": "Stack Overflow",
+    "category": "developer",
+    "enabled": false
+  },
+  {
+    "id": "askubuntu",
+    "name": "Ask Ubuntu",
+    "category": "developer",
+    "enabled": false
+  },
+  {
+    "id": "superuser",
+    "name": "Super User",
+    "category": "developer",
+    "enabled": false
+  },
+  {
+    "id": "mdn",
+    "name": "MDN",
+    "category": "developer",
+    "enabled": false
+  },
+  {
+    "id": "hackernews",
+    "name": "Hacker News",
+    "category": "developer",
+    "enabled": false
+  },
+  {
+    "id": "docker hub",
+    "name": "Docker Hub",
+    "category": "developer",
+    "enabled": false
+  },
+  {
+    "id": "pypi",
+    "name": "PyPI",
+    "category": "developer",
+    "enabled": false
+  },
+  {
+    "id": "npm",
+    "name": "npm",
+    "category": "developer",
+    "enabled": false
+  },
+  {
+    "id": "wikipedia",
+    "name": "Wikipedia",
+    "category": "reference",
+    "enabled": false
+  },
+  {
+    "id": "wikibooks",
+    "name": "Wikibooks",
+    "category": "reference",
+    "enabled": false
+  },
+  {
+    "id": "wiktionary",
+    "name": "Wiktionary",
+    "category": "reference",
+    "enabled": false
+  },
+  {
+    "id": "arxiv",
+    "name": "arXiv",
+    "category": "research",
+    "enabled": false
+  },
+  {
+    "id": "semantic scholar",
+    "name": "Semantic Scholar",
+    "category": "research",
+    "enabled": false
+  },
+  {
+    "id": "google scholar",
+    "name": "Google Scholar",
+    "category": "research",
+    "enabled": false
+  },
+  {
+    "id": "pubmed",
+    "name": "PubMed",
+    "category": "research",
+    "enabled": false
+  },
+  {
+    "id": "openalex",
+    "name": "OpenAlex",
+    "category": "research",
+    "enabled": false
+  },
+  {
+    "id": "crossref",
+    "name": "Crossref",
+    "category": "research",
+    "enabled": false
+  },
+  {
+    "id": "reddit",
+    "name": "Reddit",
+    "category": "social",
     "enabled": false
   }
 ]

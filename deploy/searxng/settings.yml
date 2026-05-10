@@ -26,3 +26,55 @@ engines:
     disabled: false
   - name: startpage
     disabled: false
+  - name: yahoo
+    disabled: false
+  - name: qwant
+    disabled: false
+  - name: mojeek
+    disabled: false
+  - name: marginalia
+    disabled: false
+  - name: wiby
+    disabled: false
+  - name: yep
+    disabled: false
+  - name: presearch
+    disabled: false
+  - name: github
+    disabled: false
+  - name: stackoverflow
+    disabled: false
+  - name: askubuntu
+    disabled: false
+  - name: superuser
+    disabled: false
+  - name: mdn
+    disabled: false
+  - name: hackernews
+    disabled: false
+  - name: docker hub
+    disabled: false
+  - name: pypi
+    disabled: false
+  - name: npm
+    disabled: false
+  - name: wikipedia
+    disabled: false
+  - name: wikibooks
+    disabled: false
+  - name: wiktionary
+    disabled: false
+  - name: arxiv
+    disabled: false
+  - name: semantic scholar
+    disabled: false
+  - name: google scholar
+    disabled: false
+  - name: pubmed
+    disabled: false
+  - name: openalex
+    disabled: false
+  - name: crossref
+    disabled: false
+  - name: reddit
+    disabled: false

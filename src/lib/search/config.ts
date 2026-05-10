@@ -13,6 +13,7 @@ export async function readSearchEngines() {
     (engine) =>
       typeof engine.id === "string" &&
       typeof engine.name === "string" &&
+      typeof engine.category === "string" &&
       typeof engine.enabled === "boolean",
   );
 }

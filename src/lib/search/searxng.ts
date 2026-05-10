@@ -1,5 +1,5 @@
-import { getDomain, domainMatches } from "@/lib/search/filter";
-import type { SearchResult } from "@/lib/search/types";
+import { getDomain } from "@/lib/search/filter";
+import type { SearchEngine, SearchResult } from "@/lib/search/types";
 
 type SearxngResult = {
   title?: string;
@@ -17,11 +17,11 @@ type SearxngResponse = {
 export async function searchSearxng({
   query,
   engines,
-  whitelist,
+  configuredEngines,
 }: {
   query: string;
   engines: string[];
-  whitelist: string[];
+  configuredEngines: SearchEngine[];
 }) {
   const baseUrl = process.env.SEARXNG_URL;
 
@@ -47,6 +47,7 @@ export async function searchSearxng({
   }
 
   const payload = (await response.json()) as SearxngResponse;
+  const engineById = new Map(configuredEngines.map((engine) => [engine.id, engine]));
 
   return (payload.results ?? [])
     .filter((result): result is Required<Pick<SearxngResult, "title" | "url">> & SearxngResult =>
@@ -54,14 +55,25 @@ export async function searchSearxng({
     )
     .map<SearchResult>((result) => {
       const domain = getDomain(result.url);
+      const engineId = resolveEngineId(result, engineById);
+      const engine = engineById.get(engineId);
 
       return {
         title: result.title,
         url: result.url,
         content: result.content ?? "",
-        engine: result.engine ?? result.engines?.join(", ") ?? "searxng",
+        engine: engineId,
+        category: engine?.category ?? "uncategorized",
         domain,
-        whitelisted: domainMatches(domain, whitelist),
+        whitelisted: false,
       };
     });
+}
+
+function resolveEngineId(result: SearxngResult, engineById: Map<string, SearchEngine>) {
+  const candidates = [result.engine, ...(result.engines ?? [])]
+    .filter((engine): engine is string => Boolean(engine))
+    .map((engine) => engine.toLowerCase());
+
+  return candidates.find((engine) => engineById.has(engine)) ?? candidates[0] ?? "searxng";
 }

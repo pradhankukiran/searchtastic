@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Filter,
   Globe2,
+  Layers3,
   Loader2,
   Search,
   ShieldCheck,
@@ -28,12 +29,23 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { SearchEngine, SearchResult, SearchStats, WhitelistMode } from "@/lib/search/types";
+import type {
+  DomainRuleScope,
+  SearchEngine,
+  SearchFilterRules,
+  SearchResult,
+  SearchStats,
+  WhitelistMode,
+} from "@/lib/search/types";
 
 type ConfigResponse = {
   engines: SearchEngine[];
+  categories: string[];
   lists: {
+    whitelist: string[];
+    blacklist: string[];
     whitelistCount: number;
     blacklistCount: number;
   };
@@ -52,6 +64,13 @@ const whitelistModes: Array<{ id: WhitelistMode; label: string }> = [
   { id: "only", label: "Only" },
 ];
 
+type RuleScopeId = "global" | `category:${string}` | `engine:${string}`;
+
+const emptyRuleScope: DomainRuleScope = {
+  whitelist: [],
+  blacklist: [],
+};
+
 export function SearchApp() {
   const [query, setQuery] = useState("");
   const [engines, setEngines] = useState<SearchEngine[]>([]);
@@ -62,6 +81,12 @@ export function SearchApp() {
   const [stats, setStats] = useState<SearchStats | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [ruleScope, setRuleScope] = useState<RuleScopeId>("global");
+  const [filterRules, setFilterRules] = useState<SearchFilterRules>({
+    global: emptyRuleScope,
+    categories: {},
+    engines: {},
+  });
 
   useEffect(() => {
     async function loadConfig() {
@@ -72,6 +97,14 @@ export function SearchApp() {
         setConfig(nextConfig);
         setEngines(nextConfig.engines);
         setSelectedEngines(nextConfig.engines.filter((engine) => engine.enabled).map((engine) => engine.id));
+        setFilterRules({
+          global: {
+            whitelist: nextConfig.lists.whitelist,
+            blacklist: nextConfig.lists.blacklist,
+          },
+          categories: {},
+          engines: {},
+        });
       } catch {
         toast.error("Could not load Searchtastic config.");
       } finally {
@@ -84,6 +117,16 @@ export function SearchApp() {
 
   const selectedCount = selectedEngines.length;
   const canSearch = query.trim().length > 0 && selectedCount > 0 && !searching;
+  const categories = useMemo(() => [...new Set(engines.map((engine) => engine.category))], [engines]);
+  const enginesByCategory = useMemo(
+    () =>
+      categories.map((category) => ({
+        category,
+        engines: engines.filter((engine) => engine.category === category),
+      })),
+    [categories, engines],
+  );
+  const currentRules = getRuleScope(filterRules, ruleScope);
 
   const listSummary = useMemo(() => {
     if (!config) {
@@ -97,6 +140,24 @@ export function SearchApp() {
     setSelectedEngines((current) =>
       current.includes(engineId) ? current.filter((id) => id !== engineId) : [...current, engineId],
     );
+  }
+
+  function setCategoryEngines(category: string, checked: boolean) {
+    const categoryEngines = engines.filter((engine) => engine.category === category).map((engine) => engine.id);
+
+    setSelectedEngines((current) => {
+      if (!checked) {
+        return current.filter((engine) => !categoryEngines.includes(engine));
+      }
+
+      return [...new Set([...current, ...categoryEngines])];
+    });
+  }
+
+  function updateRules(kind: keyof DomainRuleScope, value: string) {
+    const domains = parseDomainText(value);
+
+    setFilterRules((current) => setRuleScopeRules(current, ruleScope, kind, domains));
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -119,6 +180,7 @@ export function SearchApp() {
           query,
           engines: selectedEngines,
           whitelistMode,
+          filterRules,
         }),
       });
       const payload = (await response.json()) as SearchResponse;
@@ -173,29 +235,59 @@ export function SearchApp() {
               </CardTitle>
               <CardDescription>{selectedCount} of {engines.length || 0} selected</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-4">
               {loadingConfig ? (
                 <LoadingRow label="Loading engines" />
               ) : (
-                engines.map((engine) => {
-                  const checked = selectedEngines.includes(engine.id);
+                enginesByCategory.map(({ category, engines: categoryEngines }) => (
+                  <div key={category} className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-sm font-medium capitalize">
+                        <Layers3 className="size-3.5 text-muted-foreground" />
+                        {category}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => setCategoryEngines(category, true)}
+                        >
+                          All
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => setCategoryEngines(category, false)}
+                        >
+                          None
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {categoryEngines.map((engine) => {
+                        const checked = selectedEngines.includes(engine.id);
 
-                  return (
-                    <Label
-                      key={engine.id}
-                      className={cn(
-                        "group flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:bg-muted/60",
-                        checked && "border-foreground/20 bg-muted/40",
-                      )}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <EngineDot active={checked} />
-                        <span className="truncate font-medium">{engine.name}</span>
-                      </span>
-                      <Checkbox checked={checked} onCheckedChange={() => toggleEngine(engine.id)} />
-                    </Label>
-                  );
-                })
+                        return (
+                          <Label
+                            key={engine.id}
+                            className={cn(
+                              "group flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:bg-muted/60",
+                              checked && "border-foreground/20 bg-muted/40",
+                            )}
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <EngineDot active={checked} />
+                              <span className="truncate font-medium">{engine.name}</span>
+                            </span>
+                            <Checkbox checked={checked} onCheckedChange={() => toggleEngine(engine.id)} />
+                          </Label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
               )}
             </CardContent>
           </Card>
@@ -227,6 +319,54 @@ export function SearchApp() {
               <div className="grid grid-cols-2 gap-2">
                 <PolicyStat icon={ShieldCheck} label="Whitelist" value={config?.lists.whitelistCount ?? 0} />
                 <PolicyStat icon={ShieldX} label="Blacklist" value={config?.lists.blacklistCount ?? 0} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-md shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="size-4 text-muted-foreground" />
+                Rule scope
+              </CardTitle>
+              <CardDescription>One domain per line</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <select
+                value={ruleScope}
+                onChange={(event) => setRuleScope(event.target.value as RuleScopeId)}
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <option value="global">Global rules</option>
+                {categories.map((category) => (
+                  <option key={category} value={`category:${category}`}>
+                    Category: {category}
+                  </option>
+                ))}
+                {engines.map((engine) => (
+                  <option key={engine.id} value={`engine:${engine.id}`}>
+                    Engine: {engine.name}
+                  </option>
+                ))}
+              </select>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Whitelist</Label>
+                <Textarea
+                  value={(currentRules.whitelist ?? []).join("\n")}
+                  onChange={(event) => updateRules("whitelist", event.target.value)}
+                  placeholder="example.com"
+                  className="min-h-24 resize-y font-mono text-xs"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Blacklist</Label>
+                <Textarea
+                  value={(currentRules.blacklist ?? []).join("\n")}
+                  onChange={(event) => updateRules("blacklist", event.target.value)}
+                  placeholder="spam.example"
+                  className="min-h-24 resize-y font-mono text-xs"
+                />
               </div>
             </CardContent>
           </Card>
@@ -301,9 +441,10 @@ export function SearchApp() {
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge variant={result.whitelisted ? "default" : "secondary"} className="gap-1.5">
                               {result.whitelisted ? <ShieldCheck className="size-3" /> : <Globe2 className="size-3" />}
-                              {result.whitelisted ? "Whitelisted" : result.engine}
+                              {result.whitelisted ? "Whitelisted" : engineName(engines, result.engine)}
                             </Badge>
                             <span className="truncate font-mono text-xs text-muted-foreground">{result.domain}</span>
+                            <span className="text-xs capitalize text-muted-foreground">{result.category}</span>
                           </div>
                           <a
                             href={result.url}
@@ -415,4 +556,72 @@ function EmptyState() {
       </p>
     </div>
   );
+}
+
+function parseDomainText(value: string) {
+  return value
+    .split(/[\n,]/)
+    .map((domain) => domain.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function getRuleScope(filterRules: SearchFilterRules, scopeId: RuleScopeId): DomainRuleScope {
+  if (scopeId === "global") {
+    return {
+      whitelist: filterRules.global?.whitelist ?? [],
+      blacklist: filterRules.global?.blacklist ?? [],
+    };
+  }
+
+  const [scope, id] = splitScope(scopeId);
+  const rules = scope === "category" ? filterRules.categories?.[id] : filterRules.engines?.[id];
+
+  return {
+    whitelist: rules?.whitelist ?? [],
+    blacklist: rules?.blacklist ?? [],
+  };
+}
+
+function setRuleScopeRules(
+  filterRules: SearchFilterRules,
+  scopeId: RuleScopeId,
+  kind: keyof DomainRuleScope,
+  domains: string[],
+): SearchFilterRules {
+  if (scopeId === "global") {
+    return {
+      ...filterRules,
+      global: {
+        whitelist: filterRules.global?.whitelist ?? [],
+        blacklist: filterRules.global?.blacklist ?? [],
+        [kind]: domains,
+      },
+    };
+  }
+
+  const [scope, id] = splitScope(scopeId);
+  const key = scope === "category" ? "categories" : "engines";
+  const currentScope = filterRules[key]?.[id] ?? emptyRuleScope;
+
+  return {
+    ...filterRules,
+    [key]: {
+      ...filterRules[key],
+      [id]: {
+        whitelist: currentScope.whitelist ?? [],
+        blacklist: currentScope.blacklist ?? [],
+        [kind]: domains,
+      },
+    },
+  };
+}
+
+function splitScope(scopeId: Exclude<RuleScopeId, "global">) {
+  const index = scopeId.indexOf(":");
+
+  return [scopeId.slice(0, index), scopeId.slice(index + 1)] as ["category" | "engine", string];
+}
+
+function engineName(engines: SearchEngine[], engineId: string) {
+  return engines.find((engine) => engine.id === engineId)?.name ?? engineId;
 }
