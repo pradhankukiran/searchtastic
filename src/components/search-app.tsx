@@ -623,7 +623,7 @@ export function SearchApp() {
         </div>
       ) : (
         <>
-          <div className="sticky top-14 z-10 border-b bg-background/85 backdrop-blur">
+          <div className="sticky top-14 z-10 border-b bg-background">
             <div className="mx-auto w-full max-w-5xl space-y-3 px-4 py-3 sm:px-6 lg:px-8">
               <form onSubmit={onSubmit}>
                 <div className="flex gap-2">
