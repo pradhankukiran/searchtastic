@@ -190,12 +190,6 @@ export function SearchApp() {
     });
   }
 
-  function toggleSearxngCategory(category: string) {
-    setSelectedSearxngCategories((current) =>
-      current.includes(category) ? current.filter((item) => item !== category) : [...current, category],
-    );
-  }
-
   function togglePlugin(plugin: string) {
     setEnabledPlugins((current) =>
       current.includes(plugin) ? current.filter((item) => item !== plugin) : [...current, plugin],
@@ -280,7 +274,6 @@ export function SearchApp() {
   const enginesPartial = engines.length > 0 && selectedEngines.length !== engines.length;
   const hasActiveFilters =
     enginesPartial ||
-    selectedSearxngCategories.length > 0 ||
     Boolean(language) ||
     Boolean(timeRange) ||
     safeSearch !== "0" ||
@@ -372,11 +365,6 @@ export function SearchApp() {
                       {selectedEngines.length} engines
                     </FilterChip>
                   ) : null}
-                  {selectedSearxngCategories.length > 0 ? (
-                    <FilterChip onClick={() => setFiltersOpen(true)}>
-                      {selectedSearxngCategories.join(", ")}
-                    </FilterChip>
-                  ) : null}
                   {language ? (
                     <FilterChip onClick={() => setFiltersOpen(true)}>{language}</FilterChip>
                   ) : null}
@@ -404,25 +392,32 @@ export function SearchApp() {
                 </div>
               ) : null}
 
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-muted-foreground">SearXNG categories</div>
-                <div className="flex flex-wrap gap-2">
-                  {(config?.searxngCategories ?? []).map((category) => (
-                    <Button
-                      key={category}
-                      type="button"
-                      size="sm"
-                      variant={selectedSearxngCategories.includes(category) ? "secondary" : "outline"}
-                      onClick={() => toggleSearxngCategory(category)}
-                    >
-                      {category}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
             </CardContent>
           </Card>
+
+          {(config?.searxngCategories ?? []).length > 0 ? (
+            <div className="-mx-1 flex items-center gap-1 overflow-x-auto border-b">
+              <CategoryTab
+                active={selectedSearxngCategories.length === 0}
+                onClick={() => setSelectedSearxngCategories([])}
+              >
+                All
+              </CategoryTab>
+              {(config?.searxngCategories ?? []).map((category) => {
+                const active =
+                  selectedSearxngCategories.length === 1 && selectedSearxngCategories[0] === category;
+                return (
+                  <CategoryTab
+                    key={category}
+                    active={active}
+                    onClick={() => setSelectedSearxngCategories(active ? [] : [category])}
+                  >
+                    {category}
+                  </CategoryTab>
+                );
+              })}
+            </div>
+          ) : null}
 
           {!config?.searxngConfigured ? (
             <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -753,6 +748,31 @@ export function SearchApp() {
         </SheetContent>
       </Sheet>
     </main>
+  );
+}
+
+function CategoryTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "relative whitespace-nowrap px-3 py-2 text-sm font-medium capitalize transition-colors",
+        active
+          ? "text-foreground after:absolute after:inset-x-3 after:bottom-[-1px] after:h-0.5 after:bg-primary"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
