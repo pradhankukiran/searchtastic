@@ -80,6 +80,22 @@ const whitelistModes: Array<{ id: WhitelistMode; label: string }> = [
 
 type RuleScopeId = "global" | `category:${string}` | `engine:${string}`;
 
+type Lens = {
+  id: string;
+  name: string;
+  engines: string[];
+  categories: string[];
+  language: string;
+  timeRange: SearchTimeRange;
+  safeSearch: SafeSearchLevel;
+  plugins: string[];
+  imageProxy: boolean;
+  whitelistMode: WhitelistMode;
+  filterRules: SearchFilterRules;
+};
+
+const LENSES_STORAGE_KEY = "searchtastic.lenses.v1";
+
 const emptyRuleScope: DomainRuleScope = {
   whitelist: [],
   blacklist: [],
@@ -117,6 +133,9 @@ export function SearchApp() {
   const [enabledPlugins, setEnabledPlugins] = useState<string[]>(["Tracker_URL_remover", "Ahmia_blacklist"]);
   const [imageProxy, setImageProxy] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [lenses, setLenses] = useState<Lens[]>([]);
+  const [savingLens, setSavingLens] = useState(false);
+  const [newLensName, setNewLensName] = useState("");
   const [ruleScope, setRuleScope] = useState<RuleScopeId>("global");
   const [filterRules, setFilterRules] = useState<SearchFilterRules>({
     global: emptyRuleScope,
@@ -150,6 +169,28 @@ export function SearchApp() {
 
     loadConfig();
   }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(LENSES_STORAGE_KEY);
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as unknown;
+      if (Array.isArray(parsed)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setLenses(parsed as Lens[]);
+      }
+    } catch {
+      // localStorage unavailable or corrupted — start fresh.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(LENSES_STORAGE_KEY, JSON.stringify(lenses));
+    } catch {
+      // localStorage unavailable — silently skip.
+    }
+  }, [lenses]);
 
   const selectedCount = selectedEngines.length;
   const canSearch = query.trim().length > 0 && (selectedCount > 0 || selectedSearxngCategories.length > 0) && !searching;
@@ -281,6 +322,82 @@ export function SearchApp() {
     !imageProxy ||
     customRulesCount > 0;
 
+  const activeLensId = useMemo(() => {
+    const sortJoin = (values: string[]) => [...values].sort().join(" ");
+    const ruleJson = JSON.stringify(filterRules);
+    const enginesKey = sortJoin(selectedEngines);
+    const categoriesKey = sortJoin(selectedSearxngCategories);
+    const pluginsKey = sortJoin(enabledPlugins);
+    for (const lens of lenses) {
+      if (
+        sortJoin(lens.engines) === enginesKey &&
+        sortJoin(lens.categories) === categoriesKey &&
+        sortJoin(lens.plugins) === pluginsKey &&
+        lens.language === language &&
+        lens.timeRange === timeRange &&
+        lens.safeSearch === safeSearch &&
+        lens.imageProxy === imageProxy &&
+        lens.whitelistMode === whitelistMode &&
+        JSON.stringify(lens.filterRules) === ruleJson
+      ) {
+        return lens.id;
+      }
+    }
+    return null;
+  }, [
+    lenses,
+    selectedEngines,
+    selectedSearxngCategories,
+    enabledPlugins,
+    language,
+    timeRange,
+    safeSearch,
+    imageProxy,
+    whitelistMode,
+    filterRules,
+  ]);
+
+  function applyLens(lens: Lens) {
+    setSelectedEngines(lens.engines);
+    setSelectedSearxngCategories(lens.categories);
+    setLanguage(lens.language);
+    setTimeRange(lens.timeRange);
+    setSafeSearch(lens.safeSearch);
+    setEnabledPlugins(lens.plugins);
+    setImageProxy(lens.imageProxy);
+    setWhitelistMode(lens.whitelistMode);
+    setFilterRules(lens.filterRules);
+  }
+
+  function saveLens() {
+    const name = newLensName.trim();
+    if (!name) {
+      setSavingLens(false);
+      setNewLensName("");
+      return;
+    }
+    const lens: Lens = {
+      id: crypto.randomUUID(),
+      name,
+      engines: selectedEngines,
+      categories: selectedSearxngCategories,
+      language,
+      timeRange,
+      safeSearch,
+      plugins: enabledPlugins,
+      imageProxy,
+      whitelistMode,
+      filterRules,
+    };
+    setLenses((prev) => [...prev, lens]);
+    setNewLensName("");
+    setSavingLens(false);
+  }
+
+  function deleteLens(id: string) {
+    setLenses((prev) => prev.filter((lens) => lens.id !== id));
+  }
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="border-b bg-card/70 backdrop-blur">
@@ -306,6 +423,55 @@ export function SearchApp() {
 
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
         <section className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {lenses.map((lens) => (
+              <button
+                key={lens.id}
+                type="button"
+                onClick={() => applyLens(lens)}
+                className={cn(
+                  "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  activeLensId === lens.id
+                    ? "border-primary/40 bg-primary/15 text-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {lens.name}
+              </button>
+            ))}
+            {savingLens ? (
+              <Input
+                autoFocus
+                value={newLensName}
+                onChange={(event) => setNewLensName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    saveLens();
+                  } else if (event.key === "Escape") {
+                    setSavingLens(false);
+                    setNewLensName("");
+                  }
+                }}
+                onBlur={() => {
+                  if (!newLensName.trim()) {
+                    setSavingLens(false);
+                  }
+                }}
+                placeholder="Lens name"
+                className="h-7 w-36 rounded-full text-xs"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSavingLens(true)}
+                className="inline-flex items-center gap-1 rounded-full border border-dashed bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                + Save as lens
+              </button>
+            )}
+          </div>
+
           <Card className="rounded-md shadow-sm">
             <CardHeader className="border-b">
               <CardTitle className="font-heading text-lg font-medium tracking-tight">Search</CardTitle>
@@ -561,6 +727,42 @@ export function SearchApp() {
           </SheetHeader>
 
           <div className="flex flex-col gap-6 pt-2">
+            {lenses.length > 0 ? (
+              <section className="space-y-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Saved lenses
+                </div>
+                <div className="space-y-1">
+                  {lenses.map((lens) => (
+                    <div
+                      key={lens.id}
+                      className={cn(
+                        "flex items-center justify-between rounded-md border bg-background px-3 py-2 text-sm transition-colors",
+                        activeLensId === lens.id && "border-primary/40 bg-primary/10",
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => applyLens(lens)}
+                        className="flex-1 text-left font-medium hover:text-primary"
+                      >
+                        {lens.name}
+                      </button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => deleteLens(lens.id)}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
             <section className="space-y-2">
               <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Domain policy</div>
               <div className="grid grid-cols-3 gap-2 rounded-md bg-muted p-1">
