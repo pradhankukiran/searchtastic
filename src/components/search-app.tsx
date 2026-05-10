@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 import {
   AlertCircle,
   Download,
-  Filter,
   Layers3,
   Loader2,
   Search,
@@ -19,14 +18,6 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -539,19 +530,8 @@ export function SearchApp() {
             )}
           </div>
 
-          <Card className="rounded-md shadow-sm">
-            <CardHeader className="border-b">
-              <CardTitle className="font-heading text-lg font-medium tracking-tight">Search</CardTitle>
-              <CardDescription>Results are merged, deduped, and filtered by domain.</CardDescription>
-              <CardAction>
-                <Badge variant="outline" className="gap-1.5">
-                  <Filter className="size-3" />
-                  {whitelistMode}
-                </Badge>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-4">
+            <form onSubmit={onSubmit} className="space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <div className="relative flex-1">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -628,9 +608,7 @@ export function SearchApp() {
                   ) : null}
                 </div>
               ) : null}
-
-            </CardContent>
-          </Card>
+          </div>
 
           {(config?.searxngCategories ?? []).length > 0 ? (
             <div className="-mx-1 flex items-center gap-1 overflow-x-auto border-b">
@@ -689,48 +667,31 @@ export function SearchApp() {
             </div>
           ) : null}
 
-          <Card className="min-h-[360px] rounded-md shadow-sm">
-            <CardHeader className="border-b">
-              <CardTitle className="font-heading text-lg font-medium tracking-tight">Results</CardTitle>
-              <CardDescription>
-                {stats ? `${results.length} results shown${meta?.numberOfResults ? ` of ${meta.numberOfResults}` : ""}` : "Ready for a search"}
-              </CardDescription>
-              <CardAction className="flex gap-2">
-                <Button type="button" size="sm" variant="outline" disabled={!hasResults} onClick={() => downloadCsv(results)}>
-                  <Download className="size-3.5" />
-                  CSV
-                </Button>
-                <Button type="button" size="sm" variant="outline" disabled={!hasResults} onClick={() => downloadRss(results)}>
-                  <Download className="size-3.5" />
-                  RSS
-                </Button>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="p-0">
-              {meta ? (
-                <SearchMetaPanel
-                  meta={meta}
-                  onSuggestion={(suggestion) => {
-                    setQuery(suggestion);
-                    toast.info("Suggestion copied into the search box.");
-                  }}
-                />
-              ) : null}
+          <div>
+            {meta ? (
+              <SearchMetaPanel
+                meta={meta}
+                onSuggestion={(suggestion) => {
+                  setQuery(suggestion);
+                  toast.info("Suggestion copied into the search box.");
+                }}
+              />
+            ) : null}
 
-              {searching ? (
-                <div className="space-y-3 p-4">
-                  <ResultSkeleton />
-                  <ResultSkeleton />
-                  <ResultSkeleton />
-                </div>
-              ) : hasResults ? (
-                <div className="divide-y">
-                  {results.map((result, index) => (
-                    <article
-                      key={result.url}
-                      data-result-index={index}
-                      className="px-4 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/60"
-                    >
+            {searching ? (
+              <div className="space-y-3">
+                <ResultSkeleton />
+                <ResultSkeleton />
+                <ResultSkeleton />
+              </div>
+            ) : hasResults ? (
+              <div className="divide-y">
+                {results.map((result, index) => (
+                  <article
+                    key={result.url}
+                    data-result-index={index}
+                    className="-mx-4 px-4 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/60"
+                  >
                       <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
                         <div className="flex min-w-0 items-center gap-2">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -768,29 +729,45 @@ export function SearchApp() {
                           {result.content}
                         </p>
                       ) : null}
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState />
-              )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState />
+            )}
 
-              {hasResults ? (
-                <div className="border-t p-4">
-                  <Button
+            {hasResults ? (
+              <div className="flex flex-col items-center gap-3 border-t pt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={searching}
+                  onClick={() => runSearch(page + 1, true)}
+                >
+                  {searching ? <Loader2 className="size-4 animate-spin" /> : null}
+                  Load more
+                </Button>
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  <button
                     type="button"
-                    variant="outline"
-                    disabled={searching}
-                    onClick={() => runSearch(page + 1, true)}
-                    className="w-full"
+                    onClick={() => downloadCsv(results)}
+                    className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
                   >
-                    {searching ? <Loader2 className="size-4 animate-spin" /> : null}
-                    Load more
-                  </Button>
+                    <Download className="size-3" />
+                    CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadRss(results)}
+                    className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                  >
+                    <Download className="size-3" />
+                    RSS
+                  </button>
                 </div>
-              ) : null}
-            </CardContent>
-          </Card>
+              </div>
+            ) : null}
+          </div>
         </section>
       </div>
 
