@@ -13,12 +13,13 @@ import {
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import type { SearchEngine, SearchResult, SearchStats, WhitelistMode } from "@/lib/search/types";
 
 type ConfigResponse = {
@@ -260,11 +261,15 @@ export function SearchApp() {
                         </a>
                         {result.content ? <p className="line-clamp-3 text-sm leading-6 text-slate-600">{result.content}</p> : null}
                       </div>
-                      <Button asChild variant="outline" size="icon" className="shrink-0" title="Open result">
-                        <a href={result.url} target="_blank" rel="noreferrer">
-                          <ExternalLink className="size-4" />
-                        </a>
-                      </Button>
+                      <a
+                        href={result.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn(buttonVariants({ variant: "outline", size: "icon" }), "shrink-0")}
+                        title="Open result"
+                      >
+                        <ExternalLink className="size-4" />
+                      </a>
                     </div>
                   </CardContent>
                 </Card>
