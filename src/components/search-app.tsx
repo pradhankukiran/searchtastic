@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -83,10 +84,12 @@ const safeSearchLevels: Array<{ value: SafeSearchLevel; label: string }> = [
   { value: "2", label: "Strict" },
 ];
 
-export function SearchApp() {
+export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
   const config = useAppConfig();
+  const router = useRouter();
   const engines = config.engines;
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
+  const initialSearchRan = useRef(false);
   const [selectedEngines, setSelectedEngines] = useState<string[]>(() =>
     config.engines.filter((engine) => engine.enabled).map((engine) => engine.id),
   );
@@ -142,6 +145,14 @@ export function SearchApp() {
       // localStorage unavailable — silently skip.
     }
   }, [filterRules]);
+
+  useEffect(() => {
+    if (initialSearchRan.current || !initialQuery) return;
+    initialSearchRan.current = true;
+    runSearch(1, false);
+    // runSearch reads query from closure; it equals initialQuery on first render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   useEffect(() => {
     try {
@@ -274,6 +285,12 @@ export function SearchApp() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const trimmed = query.trim();
+    if (trimmed) {
+      const params = new URLSearchParams();
+      params.set("q", trimmed);
+      router.push(`/?${params.toString()}`, { scroll: false });
+    }
     await runSearch(1, false);
   }
 
