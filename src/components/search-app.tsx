@@ -647,7 +647,7 @@ export function SearchApp() {
         </div>
       ) : (
         <>
-          <div className="sticky top-14 z-10 border-b bg-background">
+          <div className="sticky top-0 z-10 border-b bg-background">
             <div className="mx-auto w-full max-w-5xl space-y-3 px-4 py-3 sm:px-6 lg:px-8">
               <form onSubmit={onSubmit}>
                 <div className="flex gap-2">
@@ -785,41 +785,40 @@ export function SearchApp() {
                   ) : null}
                 </div>
               ) : null}
+              {(config?.searxngCategories ?? []).length > 0 ? (
+                <div className="-mx-1 flex items-center gap-1 overflow-x-auto overflow-y-hidden">
+                  <CategoryTab
+                    active={selectedSearxngCategories.length === 0}
+                    onClick={() => {
+                      setSelectedSearxngCategories([]);
+                      if (hasSearched) runSearch(1, false, { categories: [] });
+                    }}
+                  >
+                    All
+                  </CategoryTab>
+                  {(config?.searxngCategories ?? []).map((category) => {
+                    const active =
+                      selectedSearxngCategories.length === 1 && selectedSearxngCategories[0] === category;
+                    return (
+                      <CategoryTab
+                        key={category}
+                        active={active}
+                        onClick={() => {
+                          const next = active ? [] : [category];
+                          setSelectedSearxngCategories(next);
+                          if (hasSearched) runSearch(1, false, { categories: next });
+                        }}
+                      >
+                        {category}
+                      </CategoryTab>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           </div>
 
           <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 sm:px-6 lg:px-8">
-            {(config?.searxngCategories ?? []).length > 0 ? (
-              <div className="-mx-1 flex items-center gap-1 overflow-x-auto overflow-y-hidden border-b">
-                <CategoryTab
-                  active={selectedSearxngCategories.length === 0}
-                  onClick={() => {
-                    setSelectedSearxngCategories([]);
-                    if (hasSearched) runSearch(1, false, { categories: [] });
-                  }}
-                >
-                  All
-                </CategoryTab>
-                {(config?.searxngCategories ?? []).map((category) => {
-                  const active =
-                    selectedSearxngCategories.length === 1 && selectedSearxngCategories[0] === category;
-                  return (
-                    <CategoryTab
-                      key={category}
-                      active={active}
-                      onClick={() => {
-                        const next = active ? [] : [category];
-                        setSelectedSearxngCategories(next);
-                        if (hasSearched) runSearch(1, false, { categories: next });
-                      }}
-                    >
-                      {category}
-                    </CategoryTab>
-                  );
-                })}
-              </div>
-            ) : null}
-
             {stats ? (
               <div className="px-1 text-xs text-muted-foreground">
                 <span className="font-medium tabular-nums text-foreground">{stats.shown}</span>
