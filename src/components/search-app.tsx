@@ -1451,7 +1451,7 @@ function downloadRss(results: SearchResult[]) {
 <rss version="2.0">
 <channel>
 <title>Searchtastic filtered results</title>
-<link>https://searchtastic-web-production.up.railway.app</link>
+<link>https://searchtastic.up.railway.app</link>
 <description>Filtered Searchtastic results</description>
 ${items}
 </channel>
