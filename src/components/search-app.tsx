@@ -643,11 +643,6 @@ export function SearchApp() {
                 Set SEARXNG_URL before searching.
               </div>
             ) : null}
-
-            <p className="text-center text-xs text-muted-foreground">
-              Press <kbd className="rounded border bg-muted px-1 font-mono">/</kbd> to focus,{" "}
-              <kbd className="rounded border bg-muted px-1 font-mono">?</kbd> for shortcuts.
-            </p>
           </div>
         </div>
       ) : (
