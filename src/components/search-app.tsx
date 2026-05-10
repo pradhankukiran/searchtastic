@@ -363,6 +363,7 @@ export function SearchApp() {
   }
 
   const hasResults = results.length > 0;
+  const hasSearched = stats !== null || searching;
   const bangTokens = useMemo(() => query.match(/(^|\s)(![^\s!]+|:[^\s]+)/g)?.map((token) => token.trim()) ?? [], [query]);
   const customRulesCount = useMemo(() => {
     const countScope = (scope?: { whitelist?: string[]; blacklist?: string[] }) =>
@@ -479,101 +480,243 @@ export function SearchApp() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {lenses.map((lens) => (
-              <button
-                key={lens.id}
-                type="button"
-                onClick={() => applyLens(lens)}
-                className={cn(
-                  "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                  activeLensId === lens.id
-                    ? "border-primary/40 bg-primary/15 text-foreground"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                {lens.name}
-              </button>
-            ))}
-            {savingLens ? (
-              <Input
-                autoFocus
-                value={newLensName}
-                onChange={(event) => setNewLensName(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    saveLens();
-                  } else if (event.key === "Escape") {
-                    setSavingLens(false);
-                    setNewLensName("");
-                  }
-                }}
-                onBlur={() => {
-                  if (!newLensName.trim()) {
-                    setSavingLens(false);
-                  }
-                }}
-                placeholder="Lens name"
-                className="h-7 w-36 rounded-full text-xs"
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setSavingLens(true)}
-                className="inline-flex items-center gap-1 rounded-full border border-dashed bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                + Save as lens
-              </button>
-            )}
-          </div>
+      {!hasSearched ? (
+        <div className="flex min-h-[calc(100svh-3.5rem)] flex-col items-center justify-center px-4 pb-20 sm:px-6">
+          <div className="w-full max-w-2xl space-y-8">
+            <div className="space-y-2 text-center">
+              <h1 className="font-heading text-5xl font-medium tracking-tight">Searchtastic</h1>
+              <p className="text-sm text-muted-foreground">A filtered metasearch.</p>
+            </div>
 
-          <div className="space-y-4">
-            <form onSubmit={onSubmit} className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row">
+            <form onSubmit={onSubmit}>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    ref={searchInputRef}
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search the web, or use !github / :fr"
+                    className="h-14 rounded-md pl-12 text-base"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setFiltersOpen(true)}
+                    className="h-14"
+                  >
+                    <SlidersHorizontal className="size-4" />
+                    Filters
+                  </Button>
+                  <Button type="submit" disabled={!canSearch} className="h-14 min-w-28">
+                    {searching ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Search className="size-4" />
+                    )}
+                    Search
+                  </Button>
+                </div>
+              </div>
+            </form>
+
+            <div className="flex flex-wrap items-center justify-center gap-2">
+                {lenses.map((lens) => (
+                  <button
+                    key={lens.id}
+                    type="button"
+                    onClick={() => applyLens(lens)}
+                    className={cn(
+                      "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                      activeLensId === lens.id
+                        ? "border-primary/40 bg-primary/15 text-foreground"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {lens.name}
+                  </button>
+                ))}
+                {savingLens ? (
+                  <Input
+                    autoFocus
+                    value={newLensName}
+                    onChange={(event) => setNewLensName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        saveLens();
+                      } else if (event.key === "Escape") {
+                        setSavingLens(false);
+                        setNewLensName("");
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!newLensName.trim()) {
+                        setSavingLens(false);
+                      }
+                    }}
+                    placeholder="Lens name"
+                    className="h-7 w-36 rounded-full text-xs"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSavingLens(true)}
+                    className="inline-flex items-center gap-1 rounded-full border border-dashed bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    + Save as lens
+                  </button>
+                )}
+            </div>
+
+            {hasActiveFilters ? (
+              <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
+                {enginesPartial ? (
+                  <FilterChip onClick={() => setFiltersOpen(true)}>
+                    {selectedEngines.length} engines
+                  </FilterChip>
+                ) : null}
+                {language ? (
+                  <FilterChip onClick={() => setFiltersOpen(true)}>{language}</FilterChip>
+                ) : null}
+                {timeRange ? (
+                  <FilterChip onClick={() => setFiltersOpen(true)}>{timeRangeLabel}</FilterChip>
+                ) : null}
+                {safeSearch !== "0" ? (
+                  <FilterChip onClick={() => setFiltersOpen(true)}>
+                    Safe: {safeSearchLabel}
+                  </FilterChip>
+                ) : null}
+                {whitelistMode !== "off" ? (
+                  <FilterChip onClick={() => setFiltersOpen(true)}>
+                    Whitelist: {whitelistMode}
+                  </FilterChip>
+                ) : null}
+                {!imageProxy ? (
+                  <FilterChip onClick={() => setFiltersOpen(true)}>No image proxy</FilterChip>
+                ) : null}
+                {customRulesCount > 0 ? (
+                  <Link
+                    href="/settings"
+                    className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    {customRulesCount} custom rule{customRulesCount === 1 ? "" : "s"}
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
+
+            {!config?.searxngConfigured ? (
+              <div className="mx-auto flex max-w-md items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                Set SEARXNG_URL before searching.
+              </div>
+            ) : null}
+
+            <p className="text-center text-xs text-muted-foreground">
+              Press <kbd className="rounded border bg-muted px-1 font-mono">/</kbd> to focus,{" "}
+              <kbd className="rounded border bg-muted px-1 font-mono">?</kbd> for shortcuts.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="sticky top-14 z-10 border-b bg-background/85 backdrop-blur">
+            <div className="mx-auto w-full max-w-3xl space-y-3 px-4 py-3 sm:px-6 lg:px-8">
+              <form onSubmit={onSubmit}>
+                <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       ref={searchInputRef}
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
-                      placeholder="Search the web, or use !github / !science / :fr"
-                      className="h-11 rounded-md pl-9 text-base"
+                      placeholder="Search…"
+                      className="h-10 rounded-md pl-9 text-sm"
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setFiltersOpen(true)}
-                      className="h-11"
-                    >
-                      <SlidersHorizontal className="size-4" />
-                      Filters
-                    </Button>
-                    <Button type="submit" disabled={!canSearch} className="h-11 min-w-28">
-                      {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-                      Search
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setFiltersOpen(true)}
+                    className="h-10"
+                    aria-label="Filters"
+                  >
+                    <SlidersHorizontal className="size-4" />
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={!canSearch}
+                    className="h-10"
+                    aria-label="Search"
+                  >
+                    {searching ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Search className="size-4" />
+                    )}
+                  </Button>
                 </div>
               </form>
 
-              {bangTokens.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2 text-xs">
-                  <span className="font-medium text-muted-foreground">Bang syntax</span>
-                  {bangTokens.map((token) => (
-                    <Badge key={token} variant="secondary">
-                      {token}
-                    </Badge>
-                  ))}
-                </div>
-              ) : null}
-
-              {hasActiveFilters ? (
+              {bangTokens.length > 0 || hasActiveFilters || lenses.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  {lenses.map((lens) => (
+                    <button
+                      key={lens.id}
+                      type="button"
+                      onClick={() => applyLens(lens)}
+                      className={cn(
+                        "inline-flex items-center rounded-full border px-2.5 py-1 font-medium transition-colors",
+                        activeLensId === lens.id
+                          ? "border-primary/40 bg-primary/15 text-foreground"
+                          : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      {lens.name}
+                    </button>
+                  ))}
+                  {savingLens ? (
+                    <Input
+                      autoFocus
+                      value={newLensName}
+                      onChange={(event) => setNewLensName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          saveLens();
+                        } else if (event.key === "Escape") {
+                          setSavingLens(false);
+                          setNewLensName("");
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!newLensName.trim()) {
+                          setSavingLens(false);
+                        }
+                      }}
+                      placeholder="Lens name"
+                      className="h-6 w-32 rounded-full text-xs"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setSavingLens(true)}
+                      className="inline-flex items-center gap-1 rounded-full border border-dashed bg-background px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      + Save lens
+                    </button>
+                  )}
+                  {bangTokens.map((token) => (
+                    <span
+                      key={token}
+                      className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 font-mono text-muted-foreground"
+                    >
+                      {token}
+                    </span>
+                  ))}
                   {enginesPartial ? (
                     <FilterChip onClick={() => setFiltersOpen(true)}>
                       {selectedEngines.length} engines
@@ -608,90 +751,85 @@ export function SearchApp() {
                   ) : null}
                 </div>
               ) : null}
+            </div>
           </div>
 
-          {(config?.searxngCategories ?? []).length > 0 ? (
-            <div className="-mx-1 flex items-center gap-1 overflow-x-auto border-b">
-              <CategoryTab
-                active={selectedSearxngCategories.length === 0}
-                onClick={() => setSelectedSearxngCategories([])}
-              >
-                All
-              </CategoryTab>
-              {(config?.searxngCategories ?? []).map((category) => {
-                const active =
-                  selectedSearxngCategories.length === 1 && selectedSearxngCategories[0] === category;
-                return (
-                  <CategoryTab
-                    key={category}
-                    active={active}
-                    onClick={() => setSelectedSearxngCategories(active ? [] : [category])}
-                  >
-                    {category}
-                  </CategoryTab>
-                );
-              })}
-            </div>
-          ) : null}
-
-          {!config?.searxngConfigured ? (
-            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              Set SEARXNG_URL before searching.
-            </div>
-          ) : null}
-
-          {stats ? (
-            <div className="px-1 text-xs text-muted-foreground">
-              <span className="font-medium tabular-nums text-foreground">{stats.shown}</span>
-              {" of "}
-              <span className="tabular-nums">{stats.received}</span> results
-              {stats.deduped > 0 ? (
-                <>
-                  {" · "}
-                  <span className="tabular-nums">{stats.deduped}</span> deduped
-                </>
-              ) : null}
-              {stats.blacklisted > 0 ? (
-                <>
-                  {" · "}
-                  <span className="tabular-nums">{stats.blacklisted}</span> blocked
-                </>
-              ) : null}
-              {stats.whitelistRemoved > 0 ? (
-                <>
-                  {" · "}
-                  <span className="tabular-nums">{stats.whitelistRemoved}</span> off-whitelist
-                </>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div>
-            {meta ? (
-              <SearchMetaPanel
-                meta={meta}
-                onSuggestion={(suggestion) => {
-                  setQuery(suggestion);
-                  toast.info("Suggestion copied into the search box.");
-                }}
-              />
+          <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-4 sm:px-6 lg:px-8">
+            {(config?.searxngCategories ?? []).length > 0 ? (
+              <div className="-mx-1 flex items-center gap-1 overflow-x-auto border-b">
+                <CategoryTab
+                  active={selectedSearxngCategories.length === 0}
+                  onClick={() => setSelectedSearxngCategories([])}
+                >
+                  All
+                </CategoryTab>
+                {(config?.searxngCategories ?? []).map((category) => {
+                  const active =
+                    selectedSearxngCategories.length === 1 && selectedSearxngCategories[0] === category;
+                  return (
+                    <CategoryTab
+                      key={category}
+                      active={active}
+                      onClick={() => setSelectedSearxngCategories(active ? [] : [category])}
+                    >
+                      {category}
+                    </CategoryTab>
+                  );
+                })}
+              </div>
             ) : null}
 
-            {searching ? (
-              <div className="space-y-3">
-                <ResultSkeleton />
-                <ResultSkeleton />
-                <ResultSkeleton />
+            {stats ? (
+              <div className="px-1 text-xs text-muted-foreground">
+                <span className="font-medium tabular-nums text-foreground">{stats.shown}</span>
+                {" of "}
+                <span className="tabular-nums">{stats.received}</span> results
+                {stats.deduped > 0 ? (
+                  <>
+                    {" · "}
+                    <span className="tabular-nums">{stats.deduped}</span> deduped
+                  </>
+                ) : null}
+                {stats.blacklisted > 0 ? (
+                  <>
+                    {" · "}
+                    <span className="tabular-nums">{stats.blacklisted}</span> blocked
+                  </>
+                ) : null}
+                {stats.whitelistRemoved > 0 ? (
+                  <>
+                    {" · "}
+                    <span className="tabular-nums">{stats.whitelistRemoved}</span> off-whitelist
+                  </>
+                ) : null}
               </div>
-            ) : hasResults ? (
-              <div className="divide-y">
-                {results.map((result, index) => (
-                  <article
-                    key={result.url}
-                    data-result-index={index}
-                    className="-mx-4 px-4 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/60"
-                  >
+            ) : null}
+
+            <div>
+              {meta ? (
+                <SearchMetaPanel
+                  meta={meta}
+                  onSuggestion={(suggestion) => {
+                    setQuery(suggestion);
+                    toast.info("Suggestion copied into the search box.");
+                  }}
+                />
+              ) : null}
+
+              {searching ? (
+                <div className="space-y-3">
+                  <ResultSkeleton />
+                  <ResultSkeleton />
+                  <ResultSkeleton />
+                </div>
+              ) : hasResults ? (
+                <div className="divide-y">
+                  {results.map((result, index) => (
+                    <article
+                      key={result.url}
+                      data-result-index={index}
+                      className="-mx-4 px-4 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/60"
+                    >
                       <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
                         <div className="flex min-w-0 items-center gap-2">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -729,47 +867,48 @@ export function SearchApp() {
                           {result.content}
                         </p>
                       ) : null}
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <EmptyState />
-            )}
-
-            {hasResults ? (
-              <div className="flex flex-col items-center gap-3 border-t pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={searching}
-                  onClick={() => runSearch(page + 1, true)}
-                >
-                  {searching ? <Loader2 className="size-4 animate-spin" /> : null}
-                  Load more
-                </Button>
-                <div className="flex gap-4 text-xs text-muted-foreground">
-                  <button
-                    type="button"
-                    onClick={() => downloadCsv(results)}
-                    className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
-                  >
-                    <Download className="size-3" />
-                    CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => downloadRss(results)}
-                    className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
-                  >
-                    <Download className="size-3" />
-                    RSS
-                  </button>
+                    </article>
+                  ))}
                 </div>
-              </div>
-            ) : null}
+              ) : (
+                <EmptyState />
+              )}
+
+              {hasResults ? (
+                <div className="flex flex-col items-center gap-3 border-t pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={searching}
+                    onClick={() => runSearch(page + 1, true)}
+                  >
+                    {searching ? <Loader2 className="size-4 animate-spin" /> : null}
+                    Load more
+                  </Button>
+                  <div className="flex gap-4 text-xs text-muted-foreground">
+                    <button
+                      type="button"
+                      onClick={() => downloadCsv(results)}
+                      className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                    >
+                      <Download className="size-3" />
+                      CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadRss(results)}
+                      className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                    >
+                      <Download className="size-3" />
+                      RSS
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
-        </section>
-      </div>
+        </>
+      )}
 
       <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
         <SheetContent side="right" className="overflow-y-auto sm:max-w-xl">
@@ -1222,13 +1361,10 @@ function ResultSkeleton() {
 
 function EmptyState() {
   return (
-    <div className="flex min-h-[300px] flex-col items-center justify-center px-6 text-center">
-      <div className="grid size-12 place-items-center rounded-md border bg-muted">
-        <Search className="size-5 text-muted-foreground" />
-      </div>
-      <h2 className="mt-4 font-heading text-lg font-medium tracking-tight">No results yet</h2>
+    <div className="flex min-h-[200px] flex-col items-center justify-center px-6 text-center">
+      <h2 className="font-heading text-lg font-medium tracking-tight">No matches</h2>
       <p className="mt-1 max-w-sm text-sm leading-6 text-muted-foreground">
-        Choose engines, set a domain policy, and run a search.
+        Try a different query, broaden the engines, or relax your domain rules.
       </p>
     </div>
   );
