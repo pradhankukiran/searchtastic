@@ -795,10 +795,13 @@ export function SearchApp() {
 
           <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 sm:px-6 lg:px-8">
             {(config?.searxngCategories ?? []).length > 0 ? (
-              <div className="-mx-1 flex items-center gap-1 overflow-x-auto border-b">
+              <div className="-mx-1 flex items-center gap-1 overflow-x-auto overflow-y-hidden border-b">
                 <CategoryTab
                   active={selectedSearxngCategories.length === 0}
-                  onClick={() => setSelectedSearxngCategories([])}
+                  onClick={() => {
+                    setSelectedSearxngCategories([]);
+                    if (hasSearched) runSearch(1, false, { categories: [] });
+                  }}
                 >
                   All
                 </CategoryTab>
@@ -809,7 +812,11 @@ export function SearchApp() {
                     <CategoryTab
                       key={category}
                       active={active}
-                      onClick={() => setSelectedSearxngCategories(active ? [] : [category])}
+                      onClick={() => {
+                        const next = active ? [] : [category];
+                        setSelectedSearxngCategories(next);
+                        if (hasSearched) runSearch(1, false, { categories: next });
+                      }}
                     >
                       {category}
                     </CategoryTab>
@@ -1248,7 +1255,7 @@ function CategoryTab({
       className={cn(
         "relative whitespace-nowrap px-3 py-2 text-sm font-medium capitalize transition-colors",
         active
-          ? "text-foreground after:absolute after:inset-x-3 after:bottom-[-1px] after:h-0.5 after:bg-primary"
+          ? "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-primary"
           : "text-muted-foreground hover:text-foreground",
       )}
     >
