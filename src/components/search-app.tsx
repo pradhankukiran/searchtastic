@@ -557,12 +557,28 @@ export function SearchApp() {
           ) : null}
 
           {stats ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-              <Stat label="Received" value={stats.received} />
-              <Stat label="Deduped" value={stats.deduped} />
-              <Stat label="Blocked" value={stats.blacklisted} />
-              <Stat label="Whitelist" value={stats.whitelistRemoved} />
-              <Stat label="Shown" value={stats.shown} />
+            <div className="px-1 text-xs text-muted-foreground">
+              <span className="font-medium tabular-nums text-foreground">{stats.shown}</span>
+              {" of "}
+              <span className="tabular-nums">{stats.received}</span> results
+              {stats.deduped > 0 ? (
+                <>
+                  {" · "}
+                  <span className="tabular-nums">{stats.deduped}</span> deduped
+                </>
+              ) : null}
+              {stats.blacklisted > 0 ? (
+                <>
+                  {" · "}
+                  <span className="tabular-nums">{stats.blacklisted}</span> blocked
+                </>
+              ) : null}
+              {stats.whitelistRemoved > 0 ? (
+                <>
+                  {" · "}
+                  <span className="tabular-nums">{stats.whitelistRemoved}</span> off-whitelist
+                </>
+              ) : null}
             </div>
           ) : null}
 
@@ -667,15 +683,6 @@ export function SearchApp() {
         </section>
       </div>
     </main>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-md border bg-card px-3 py-2 shadow-sm">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
-    </div>
   );
 }
 
