@@ -29,6 +29,13 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type {
@@ -109,6 +116,7 @@ export function SearchApp() {
   const [safeSearch, setSafeSearch] = useState<SafeSearchLevel>("0");
   const [enabledPlugins, setEnabledPlugins] = useState<string[]>(["Tracker_URL_remover", "Ahmia_blacklist"]);
   const [imageProxy, setImageProxy] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [ruleScope, setRuleScope] = useState<RuleScopeId>("global");
   const [filterRules, setFilterRules] = useState<SearchFilterRules>({
     global: emptyRuleScope,
@@ -283,153 +291,7 @@ export function SearchApp() {
         </div>
       </div>
 
-      <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[340px_minmax(0,1fr)] lg:px-8">
-        <aside className="space-y-4">
-          <Card className="rounded-md shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-heading text-lg font-medium tracking-tight">
-                <SlidersHorizontal className="size-4 text-muted-foreground" />
-                Search engines
-              </CardTitle>
-              <CardDescription>{selectedCount} of {engines.length || 0} selected</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {loadingConfig ? (
-                <LoadingRow label="Loading engines" />
-              ) : (
-                enginesByCategory.map(({ category, engines: categoryEngines }) => (
-                  <div key={category} className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 text-sm font-medium capitalize">
-                        <Layers3 className="size-3.5 text-muted-foreground" />
-                        {category}
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => setCategoryEngines(category, true)}
-                        >
-                          All
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => setCategoryEngines(category, false)}
-                        >
-                          None
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {categoryEngines.map((engine) => {
-                        const checked = selectedEngines.includes(engine.id);
-
-                        return (
-                          <Label
-                            key={engine.id}
-                            className={cn(
-                              "group flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:bg-muted/60",
-                              checked && "border-foreground/20 bg-muted/40",
-                            )}
-                          >
-                            <span className="flex min-w-0 items-center gap-2">
-                              <EngineDot active={checked} />
-                              <span className="truncate font-medium">{engine.name}</span>
-                            </span>
-                            <Checkbox checked={checked} onCheckedChange={() => toggleEngine(engine.id)} />
-                          </Label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-md shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-heading text-lg font-medium tracking-tight">
-                <ShieldCheck className="size-4 text-muted-foreground" />
-                Domain policy
-              </CardTitle>
-              <CardDescription>Blacklist always applies</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-2 rounded-md bg-muted p-1">
-                {whitelistModes.map((mode) => (
-                  <Button
-                    key={mode.id}
-                    type="button"
-                    size="sm"
-                    variant={whitelistMode === mode.id ? "secondary" : "ghost"}
-                    onClick={() => setWhitelistMode(mode.id)}
-                    className="h-8"
-                  >
-                    {mode.label}
-                  </Button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <PolicyStat icon={ShieldCheck} label="Whitelist" value={config?.lists.whitelistCount ?? 0} />
-                <PolicyStat icon={ShieldX} label="Blacklist" value={config?.lists.blacklistCount ?? 0} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-md shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-heading text-lg font-medium tracking-tight">
-                <Filter className="size-4 text-muted-foreground" />
-                Rule scope
-              </CardTitle>
-              <CardDescription>One domain per line</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <select
-                value={ruleScope}
-                onChange={(event) => setRuleScope(event.target.value as RuleScopeId)}
-                className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="global">Global rules</option>
-                {categories.map((category) => (
-                  <option key={category} value={`category:${category}`}>
-                    Category: {category}
-                  </option>
-                ))}
-                {engines.map((engine) => (
-                  <option key={engine.id} value={`engine:${engine.id}`}>
-                    Engine: {engine.name}
-                  </option>
-                ))}
-              </select>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground">Whitelist</Label>
-                <Textarea
-                  value={(currentRules.whitelist ?? []).join("\n")}
-                  onChange={(event) => updateRules("whitelist", event.target.value)}
-                  placeholder="example.com"
-                  className="min-h-24 resize-y font-mono text-xs"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground">Blacklist</Label>
-                <Textarea
-                  value={(currentRules.blacklist ?? []).join("\n")}
-                  onChange={(event) => updateRules("blacklist", event.target.value)}
-                  placeholder="spam.example"
-                  className="min-h-24 resize-y font-mono text-xs"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </aside>
-
+      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
         <section className="space-y-4">
           <Card className="rounded-md shadow-sm">
             <CardHeader className="border-b">
@@ -454,56 +316,21 @@ export function SearchApp() {
                       className="h-11 rounded-md pl-9 text-base"
                     />
                   </div>
-                  <Button type="submit" disabled={!canSearch} className="h-11 min-w-28">
-                    {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-                    Search
-                  </Button>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-4">
-                  <Field label="Language">
-                    <select
-                      value={language}
-                      onChange={(event) => setLanguage(event.target.value)}
-                      className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setFiltersOpen(true)}
+                      className="h-11"
                     >
-                      {(config?.languages ?? [""]).map((item) => (
-                        <option key={item || "default"} value={item}>
-                          {item || "Default"}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Time">
-                    <select
-                      value={timeRange}
-                      onChange={(event) => setTimeRange(event.target.value as SearchTimeRange)}
-                      className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                    >
-                      {timeRanges.map((item) => (
-                        <option key={item.value || "any"} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Safe search">
-                    <select
-                      value={safeSearch}
-                      onChange={(event) => setSafeSearch(event.target.value as SafeSearchLevel)}
-                      className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                    >
-                      {safeSearchLevels.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Label className="flex h-full min-h-14 items-center justify-between gap-3 rounded-md border bg-background px-3 text-sm">
-                    <span>Image proxy</span>
-                    <Checkbox checked={imageProxy} onCheckedChange={(checked) => setImageProxy(Boolean(checked))} />
-                  </Label>
+                      <SlidersHorizontal className="size-4" />
+                      Filters
+                    </Button>
+                    <Button type="submit" disabled={!canSearch} className="h-11 min-w-28">
+                      {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                      Search
+                    </Button>
+                  </div>
                 </div>
               </form>
 
@@ -535,17 +362,6 @@ export function SearchApp() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-muted-foreground">Plugins</div>
-                <div className="grid gap-2 md:grid-cols-2">
-                  {(config?.plugins ?? []).map((plugin) => (
-                    <Label key={plugin} className="flex min-h-9 items-center justify-between rounded-md border px-3 text-xs">
-                      <span>{plugin.replaceAll("_", " ")}</span>
-                      <Checkbox checked={enabledPlugins.includes(plugin)} onCheckedChange={() => togglePlugin(plugin)} />
-                    </Label>
-                  ))}
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -682,6 +498,201 @@ export function SearchApp() {
           </Card>
         </section>
       </div>
+
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent side="right" className="overflow-y-auto sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Filters</SheetTitle>
+            <SheetDescription>Engines, language, time, plugins, and rules.</SheetDescription>
+          </SheetHeader>
+
+          <div className="flex flex-col gap-6 pt-2">
+            <section className="space-y-2">
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Domain policy</div>
+              <div className="grid grid-cols-3 gap-2 rounded-md bg-muted p-1">
+                {whitelistModes.map((mode) => (
+                  <Button
+                    key={mode.id}
+                    type="button"
+                    size="sm"
+                    variant={whitelistMode === mode.id ? "secondary" : "ghost"}
+                    onClick={() => setWhitelistMode(mode.id)}
+                    className="h-8"
+                  >
+                    {mode.label}
+                  </Button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <PolicyStat icon={ShieldCheck} label="Whitelist" value={config?.lists.whitelistCount ?? 0} />
+                <PolicyStat icon={ShieldX} label="Blacklist" value={config?.lists.blacklistCount ?? 0} />
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Engines</div>
+                <div className="text-xs text-muted-foreground">
+                  {selectedCount} of {engines.length || 0}
+                </div>
+              </div>
+              {loadingConfig ? (
+                <LoadingRow label="Loading engines" />
+              ) : (
+                <div className="space-y-4">
+                  {enginesByCategory.map(({ category, engines: categoryEngines }) => (
+                    <div key={category} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-sm font-medium capitalize">
+                          <Layers3 className="size-3.5 text-muted-foreground" />
+                          {category}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button type="button" variant="ghost" size="xs" onClick={() => setCategoryEngines(category, true)}>
+                            All
+                          </Button>
+                          <Button type="button" variant="ghost" size="xs" onClick={() => setCategoryEngines(category, false)}>
+                            None
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {categoryEngines.map((engine) => {
+                          const checked = selectedEngines.includes(engine.id);
+                          return (
+                            <Label
+                              key={engine.id}
+                              className={cn(
+                                "group flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:bg-muted/60",
+                                checked && "border-foreground/20 bg-muted/40",
+                              )}
+                            >
+                              <span className="flex min-w-0 items-center gap-2">
+                                <EngineDot active={checked} />
+                                <span className="truncate font-medium">{engine.name}</span>
+                              </span>
+                              <Checkbox checked={checked} onCheckedChange={() => toggleEngine(engine.id)} />
+                            </Label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Search options</div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Language">
+                  <select
+                    value={language}
+                    onChange={(event) => setLanguage(event.target.value)}
+                    className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    {(config?.languages ?? [""]).map((item) => (
+                      <option key={item || "default"} value={item}>
+                        {item || "Default"}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Time">
+                  <select
+                    value={timeRange}
+                    onChange={(event) => setTimeRange(event.target.value as SearchTimeRange)}
+                    className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    {timeRanges.map((item) => (
+                      <option key={item.value || "any"} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Safe search">
+                  <select
+                    value={safeSearch}
+                    onChange={(event) => setSafeSearch(event.target.value as SafeSearchLevel)}
+                    className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    {safeSearchLevels.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Label className="flex min-h-14 items-center justify-between gap-3 rounded-md border bg-background px-3 text-sm">
+                  <span>Image proxy</span>
+                  <Checkbox
+                    checked={imageProxy}
+                    onCheckedChange={(checked) => setImageProxy(Boolean(checked))}
+                  />
+                </Label>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Plugins</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(config?.plugins ?? []).map((plugin) => (
+                  <Label
+                    key={plugin}
+                    className="flex min-h-9 items-center justify-between rounded-md border px-3 text-xs"
+                  >
+                    <span>{plugin.replaceAll("_", " ")}</span>
+                    <Checkbox
+                      checked={enabledPlugins.includes(plugin)}
+                      onCheckedChange={() => togglePlugin(plugin)}
+                    />
+                  </Label>
+                ))}
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Rule scope</div>
+              <select
+                value={ruleScope}
+                onChange={(event) => setRuleScope(event.target.value as RuleScopeId)}
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <option value="global">Global rules</option>
+                {categories.map((category) => (
+                  <option key={category} value={`category:${category}`}>
+                    Category: {category}
+                  </option>
+                ))}
+                {engines.map((engine) => (
+                  <option key={engine.id} value={`engine:${engine.id}`}>
+                    Engine: {engine.name}
+                  </option>
+                ))}
+              </select>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Whitelist</Label>
+                <Textarea
+                  value={(currentRules.whitelist ?? []).join("\n")}
+                  onChange={(event) => updateRules("whitelist", event.target.value)}
+                  placeholder="example.com"
+                  className="min-h-24 resize-y font-mono text-xs"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Blacklist</Label>
+                <Textarea
+                  value={(currentRules.blacklist ?? []).join("\n")}
+                  onChange={(event) => updateRules("blacklist", event.target.value)}
+                  placeholder="spam.example"
+                  className="min-h-24 resize-y font-mono text-xs"
+                />
+              </div>
+            </section>
+          </div>
+        </SheetContent>
+      </Sheet>
     </main>
   );
 }
