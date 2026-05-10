@@ -6,9 +6,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Download,
-  ExternalLink,
   Filter,
-  Globe2,
   Layers3,
   Loader2,
   Search,
@@ -19,7 +17,7 @@ import {
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -605,39 +603,44 @@ export function SearchApp() {
               ) : hasResults ? (
                 <div className="divide-y">
                   {results.map((result) => (
-                    <article key={result.url} className="p-4 transition-colors hover:bg-muted/40">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0 space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant={result.whitelisted ? "default" : "secondary"} className="gap-1.5">
-                              {result.whitelisted ? <ShieldCheck className="size-3" /> : <Globe2 className="size-3" />}
-                              {result.whitelisted ? "Whitelisted" : engineName(engines, result.engine)}
-                            </Badge>
-                            <span className="truncate font-mono text-xs text-muted-foreground">{result.domain}</span>
-                            <span className="text-xs capitalize text-muted-foreground">{result.category}</span>
-                          </div>
-                          <a
-                            href={result.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="block text-base font-semibold leading-snug text-foreground hover:underline"
-                          >
-                            {result.title}
-                          </a>
-                          {result.content ? (
-                            <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{result.content}</p>
+                    <article key={result.url} className="px-4 py-4 transition-colors hover:bg-muted/40">
+                      <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+                        <div className="flex min-w-0 items-center gap-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`https://icons.duckduckgo.com/ip3/${result.domain}.ico`}
+                            alt=""
+                            loading="lazy"
+                            className="size-4 shrink-0 rounded-sm"
+                            onError={(event) => {
+                              event.currentTarget.style.visibility = "hidden";
+                            }}
+                          />
+                          <span className="truncate font-mono">{result.domain}</span>
+                          {result.whitelisted ? (
+                            <ShieldCheck
+                              className="size-3 shrink-0 text-primary"
+                              aria-label="Whitelisted"
+                            />
                           ) : null}
                         </div>
-                        <a
-                          href={result.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={cn(buttonVariants({ variant: "outline", size: "icon" }), "shrink-0")}
-                          title="Open result"
-                        >
-                          <ExternalLink className="size-4" />
-                        </a>
+                        <span className="shrink-0 text-[11px] uppercase tracking-wider text-muted-foreground/80">
+                          {engineName(engines, result.engine)}
+                        </span>
                       </div>
+                      <a
+                        href={result.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1.5 block font-heading text-lg font-medium leading-snug tracking-tight text-foreground hover:text-primary"
+                      >
+                        {result.title}
+                      </a>
+                      {result.content ? (
+                        <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                          {result.content}
+                        </p>
+                      ) : null}
                     </article>
                   ))}
                 </div>
