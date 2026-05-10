@@ -464,7 +464,7 @@ export function SearchApp() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="border-b">
-        <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
             className="font-heading text-lg font-medium tracking-tight text-foreground"
@@ -482,7 +482,7 @@ export function SearchApp() {
 
       {!hasSearched ? (
         <div className="flex min-h-[calc(100svh-3.5rem)] flex-col items-center justify-center px-4 pb-20 sm:px-6">
-          <div className="w-full max-w-2xl space-y-8">
+          <div className="w-full max-w-3xl space-y-8">
             <div className="space-y-2 text-center">
               <h1 className="font-heading text-5xl font-medium tracking-tight">Searchtastic</h1>
               <p className="text-sm text-muted-foreground">A filtered metasearch.</p>
@@ -624,7 +624,7 @@ export function SearchApp() {
       ) : (
         <>
           <div className="sticky top-14 z-10 border-b bg-background/85 backdrop-blur">
-            <div className="mx-auto w-full max-w-3xl space-y-3 px-4 py-3 sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-5xl space-y-3 px-4 py-3 sm:px-6 lg:px-8">
               <form onSubmit={onSubmit}>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
@@ -634,14 +634,14 @@ export function SearchApp() {
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
                       placeholder="Search…"
-                      className="h-10 rounded-md pl-9 text-sm"
+                      className="h-11 rounded-md pl-9 text-sm"
                     />
                   </div>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setFiltersOpen(true)}
-                    className="h-10"
+                    className="h-11"
                     aria-label="Filters"
                   >
                     <SlidersHorizontal className="size-4" />
@@ -649,7 +649,7 @@ export function SearchApp() {
                   <Button
                     type="submit"
                     disabled={!canSearch}
-                    className="h-10"
+                    className="h-11"
                     aria-label="Search"
                   >
                     {searching ? (
@@ -754,7 +754,7 @@ export function SearchApp() {
             </div>
           </div>
 
-          <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-4 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 sm:px-6 lg:px-8">
             {(config?.searxngCategories ?? []).length > 0 ? (
               <div className="-mx-1 flex items-center gap-1 overflow-x-auto border-b">
                 <CategoryTab
@@ -828,7 +828,7 @@ export function SearchApp() {
                     <article
                       key={result.url}
                       data-result-index={index}
-                      className="-mx-4 px-4 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/60"
+                      className="-mx-4 px-4 py-5 transition-colors hover:bg-muted/40 focus-within:bg-muted/60"
                     >
                       <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
                         <div className="flex min-w-0 items-center gap-2">
@@ -850,7 +850,7 @@ export function SearchApp() {
                             />
                           ) : null}
                         </div>
-                        <span className="shrink-0 text-[11px] uppercase tracking-wider text-muted-foreground/80">
+                        <span className="shrink-0 text-xs uppercase tracking-wider text-muted-foreground/80">
                           {engineName(engines, result.engine)}
                         </span>
                       </div>
@@ -858,7 +858,7 @@ export function SearchApp() {
                         href={result.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-1.5 block font-heading text-lg font-medium leading-snug tracking-tight text-foreground hover:text-primary"
+                        className="mt-1.5 block font-heading text-xl font-medium leading-snug tracking-tight text-foreground hover:text-primary"
                       >
                         {result.title}
                       </a>

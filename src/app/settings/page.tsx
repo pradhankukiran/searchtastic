@@ -159,7 +159,7 @@ setConfig(data);
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="border-b bg-card/70 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-3xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-4 px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -173,7 +173,7 @@ setConfig(data);
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
         <Card className="rounded-md shadow-sm">
           <CardHeader>
             <CardTitle className="font-heading text-lg font-medium tracking-tight">
