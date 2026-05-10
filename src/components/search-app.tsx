@@ -28,10 +28,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useAppConfig } from "@/lib/search/config-context";
 import { cn } from "@/lib/utils";
 import type {
-  DomainRuleScope,
-  SearchEngine,
   SearchFilterRules,
   SearchMeta,
   SearchResult,
@@ -40,21 +39,6 @@ import type {
   SafeSearchLevel,
   WhitelistMode,
 } from "@/lib/search/types";
-
-type ConfigResponse = {
-  engines: SearchEngine[];
-  categories: string[];
-  searxngCategories: string[];
-  languages: string[];
-  plugins: string[];
-  lists: {
-    whitelist: string[];
-    blacklist: string[];
-    whitelistCount: number;
-    blacklistCount: number;
-  };
-  searxngConfigured: boolean;
-};
 
 type SearchResponse = {
   results: SearchResult[];
@@ -86,11 +70,6 @@ type Lens = {
 const LENSES_STORAGE_KEY = "searchtastic.lenses.v1";
 const RULES_STORAGE_KEY = "searchtastic.filter-rules.v1";
 
-const emptyRuleScope: DomainRuleScope = {
-  whitelist: [],
-  blacklist: [],
-};
-
 const timeRanges: Array<{ value: SearchTimeRange; label: string }> = [
   { value: "", label: "Any time" },
   { value: "day", label: "Past day" },
@@ -105,15 +84,16 @@ const safeSearchLevels: Array<{ value: SafeSearchLevel; label: string }> = [
 ];
 
 export function SearchApp() {
+  const config = useAppConfig();
+  const engines = config.engines;
   const [query, setQuery] = useState("");
-  const [engines, setEngines] = useState<SearchEngine[]>([]);
-  const [selectedEngines, setSelectedEngines] = useState<string[]>([]);
+  const [selectedEngines, setSelectedEngines] = useState<string[]>(() =>
+    config.engines.filter((engine) => engine.enabled).map((engine) => engine.id),
+  );
   const [whitelistMode, setWhitelistMode] = useState<WhitelistMode>("prefer");
-  const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [stats, setStats] = useState<SearchStats | null>(null);
   const [meta, setMeta] = useState<SearchMeta | null>(null);
-  const [loadingConfig, setLoadingConfig] = useState(true);
   const [searching, setSearching] = useState(false);
   const [page, setPage] = useState(1);
   const [selectedSearxngCategories, setSelectedSearxngCategories] = useState<string[]>([]);
@@ -129,57 +109,39 @@ export function SearchApp() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const lensesHydrated = useRef(false);
-  const [filterRules, setFilterRules] = useState<SearchFilterRules>({
-    global: emptyRuleScope,
+  const rulesHydrated = useRef(false);
+  const [filterRules, setFilterRules] = useState<SearchFilterRules>(() => ({
+    global: {
+      whitelist: config.lists.whitelist,
+      blacklist: config.lists.blacklist,
+    },
     categories: {},
     engines: {},
-  });
+  }));
 
   useEffect(() => {
-    async function loadConfig() {
-      let savedRules: SearchFilterRules | null = null;
-      try {
-        const raw = window.localStorage.getItem(RULES_STORAGE_KEY);
-        if (raw) savedRules = JSON.parse(raw) as SearchFilterRules;
-      } catch {
-        savedRules = null;
+    try {
+      const raw = window.localStorage.getItem(RULES_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as SearchFilterRules;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setFilterRules(parsed);
       }
-
-      try {
-        const response = await fetch("/api/config");
-        const nextConfig = (await response.json()) as ConfigResponse;
-
-        setConfig(nextConfig);
-        setEngines(nextConfig.engines);
-        setSelectedEngines(nextConfig.engines.filter((engine) => engine.enabled).map((engine) => engine.id));
-        setFilterRules(
-          savedRules ?? {
-            global: {
-              whitelist: nextConfig.lists.whitelist,
-              blacklist: nextConfig.lists.blacklist,
-            },
-            categories: {},
-            engines: {},
-          },
-        );
-      } catch {
-        toast.error("Could not load Searchtastic config.");
-      } finally {
-        setLoadingConfig(false);
-      }
+    } catch {
+      // localStorage unavailable or corrupted — keep defaults.
+    } finally {
+      rulesHydrated.current = true;
     }
-
-    loadConfig();
   }, []);
 
   useEffect(() => {
-    if (loadingConfig) return;
+    if (!rulesHydrated.current) return;
     try {
       window.localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(filterRules));
     } catch {
       // localStorage unavailable — silently skip.
     }
-  }, [filterRules, loadingConfig]);
+  }, [filterRules]);
 
   useEffect(() => {
     try {
@@ -489,24 +451,7 @@ export function SearchApp() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link
-            href="/"
-            className="font-heading text-lg font-medium tracking-tight text-foreground"
-          >
-            Searchtastic
-          </Link>
-          <Link
-            href="/settings"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Settings
-          </Link>
-        </div>
-      </header>
-
+    <>
       {!hasSearched ? (
         <div className="flex min-h-[calc(100svh-3.5rem)] flex-col items-center justify-center px-4 pb-20 sm:px-6">
           <div className="w-full max-w-3xl space-y-8">
@@ -1010,50 +955,46 @@ export function SearchApp() {
                   {selectedCount} of {engines.length || 0}
                 </div>
               </div>
-              {loadingConfig ? (
-                <LoadingRow label="Loading engines" />
-              ) : (
-                <div className="space-y-4">
-                  {enginesByCategory.map(({ category, engines: categoryEngines }) => (
-                    <div key={category} className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 text-sm font-medium capitalize">
-                          <Layers3 className="size-3.5 text-muted-foreground" />
-                          {category}
-                        </div>
-                        <div className="flex gap-1">
-                          <Button type="button" variant="ghost" size="xs" onClick={() => setCategoryEngines(category, true)}>
-                            All
-                          </Button>
-                          <Button type="button" variant="ghost" size="xs" onClick={() => setCategoryEngines(category, false)}>
-                            None
-                          </Button>
-                        </div>
+              <div className="space-y-4">
+                {enginesByCategory.map(({ category, engines: categoryEngines }) => (
+                  <div key={category} className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-sm font-medium capitalize">
+                        <Layers3 className="size-3.5 text-muted-foreground" />
+                        {category}
                       </div>
-                      <div className="space-y-2">
-                        {categoryEngines.map((engine) => {
-                          const checked = selectedEngines.includes(engine.id);
-                          return (
-                            <Label
-                              key={engine.id}
-                              className={cn(
-                                "group flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:bg-muted/60",
-                                checked && "border-foreground/20 bg-muted/40",
-                              )}
-                            >
-                              <span className="flex min-w-0 items-center gap-2">
-                                <EngineDot active={checked} />
-                                <span className="truncate font-medium">{engine.name}</span>
-                              </span>
-                              <Checkbox checked={checked} onCheckedChange={() => toggleEngine(engine.id)} />
-                            </Label>
-                          );
-                        })}
+                      <div className="flex gap-1">
+                        <Button type="button" variant="ghost" size="xs" onClick={() => setCategoryEngines(category, true)}>
+                          All
+                        </Button>
+                        <Button type="button" variant="ghost" size="xs" onClick={() => setCategoryEngines(category, false)}>
+                          None
+                        </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="space-y-2">
+                      {categoryEngines.map((engine) => {
+                        const checked = selectedEngines.includes(engine.id);
+                        return (
+                          <Label
+                            key={engine.id}
+                            className={cn(
+                              "group flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:bg-muted/60",
+                              checked && "border-foreground/20 bg-muted/40",
+                            )}
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <EngineDot active={checked} />
+                              <span className="truncate font-medium">{engine.name}</span>
+                            </span>
+                            <Checkbox checked={checked} onCheckedChange={() => toggleEngine(engine.id)} />
+                          </Label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
 
             <section className="space-y-3">
@@ -1197,7 +1138,7 @@ export function SearchApp() {
           </div>
         </div>
       ) : null}
-    </main>
+    </>
   );
 }
 
@@ -1361,15 +1302,6 @@ function EngineDot({ active }: { active: boolean }) {
         active ? "border-primary bg-primary" : "border-muted-foreground/40 bg-muted",
       )}
     />
-  );
-}
-
-function LoadingRow({ label }: { label: string }) {
-  return (
-    <div className="flex h-11 items-center gap-2 rounded-md border bg-background px-3 text-sm text-muted-foreground">
-      <Loader2 className="size-4 animate-spin" />
-      {label}
-    </div>
   );
 }
 
