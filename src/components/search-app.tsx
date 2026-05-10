@@ -271,7 +271,7 @@ export function SearchApp() {
               <Search className="size-4" />
             </div>
             <div>
-              <div className="text-base font-semibold leading-none">Searchtastic</div>
+              <div className="font-heading text-lg font-medium leading-none tracking-tight">Searchtastic</div>
               <div className="mt-1 text-xs text-muted-foreground">Filtered metasearch workspace</div>
             </div>
           </div>
@@ -289,7 +289,7 @@ export function SearchApp() {
         <aside className="space-y-4">
           <Card className="rounded-md shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 font-heading text-lg font-medium tracking-tight">
                 <SlidersHorizontal className="size-4 text-muted-foreground" />
                 Search engines
               </CardTitle>
@@ -354,7 +354,7 @@ export function SearchApp() {
 
           <Card className="rounded-md shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 font-heading text-lg font-medium tracking-tight">
                 <ShieldCheck className="size-4 text-muted-foreground" />
                 Domain policy
               </CardTitle>
@@ -385,7 +385,7 @@ export function SearchApp() {
 
           <Card className="rounded-md shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 font-heading text-lg font-medium tracking-tight">
                 <Filter className="size-4 text-muted-foreground" />
                 Rule scope
               </CardTitle>
@@ -435,7 +435,7 @@ export function SearchApp() {
         <section className="space-y-4">
           <Card className="rounded-md shadow-sm">
             <CardHeader className="border-b">
-              <CardTitle>Search</CardTitle>
+              <CardTitle className="font-heading text-lg font-medium tracking-tight">Search</CardTitle>
               <CardDescription>Results are merged, deduped, and filtered by domain.</CardDescription>
               <CardAction>
                 <Badge variant="outline" className="gap-1.5">
@@ -570,7 +570,7 @@ export function SearchApp() {
 
           <Card className="min-h-[360px] rounded-md shadow-sm">
             <CardHeader className="border-b">
-              <CardTitle>Results</CardTitle>
+              <CardTitle className="font-heading text-lg font-medium tracking-tight">Results</CardTitle>
               <CardDescription>
                 {stats ? `${results.length} results shown${meta?.numberOfResults ? ` of ${meta.numberOfResults}` : ""}` : "Ready for a search"}
               </CardDescription>
@@ -822,7 +822,7 @@ function EmptyState() {
       <div className="grid size-12 place-items-center rounded-md border bg-muted">
         <Search className="size-5 text-muted-foreground" />
       </div>
-      <h2 className="mt-4 text-base font-semibold">No results yet</h2>
+      <h2 className="mt-4 font-heading text-lg font-medium tracking-tight">No results yet</h2>
       <p className="mt-1 max-w-sm text-sm leading-6 text-muted-foreground">
         Choose engines, set a domain policy, and run a search.
       </p>
