@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -92,12 +92,14 @@ const safeSearchLevels: Array<{ value: SafeSearchLevel; label: string }> = [
   { value: "2", label: "Strict" },
 ];
 
-export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
+export function SearchApp() {
   const config = useAppConfig();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("q") ?? "";
   const engines = config.engines;
-  const [query, setQuery] = useState(initialQuery);
-  const initialSearchRan = useRef(false);
+  const [query, setQuery] = useState(urlQuery);
+  const lastUrlQuery = useRef("");
   const [selectedEngines, setSelectedEngines] = useState<string[]>(() =>
     config.engines.filter((engine) => engine.enabled).map((engine) => engine.id),
   );
@@ -156,12 +158,23 @@ export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
   }, [filterRules]);
 
   useEffect(() => {
-    if (initialSearchRan.current || !initialQuery) return;
-    initialSearchRan.current = true;
-    runSearch(1, false);
-    // runSearch reads query from closure; it equals initialQuery on first render.
+    if (urlQuery === lastUrlQuery.current) return;
+    lastUrlQuery.current = urlQuery;
+    if (!urlQuery) {
+      // Back-button or direct visit to "/" — clear hero.
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setQuery("");
+      setResults([]);
+      setStats(null);
+      setMeta(null);
+      /* eslint-enable react-hooks/set-state-in-effect */
+      return;
+    }
+    // Direct visit, forward-button, or paste of /?q=... — sync and search.
+    setQuery(urlQuery);
+    runSearch(1, false, { query: urlQuery });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialQuery]);
+  }, [urlQuery]);
 
   useEffect(() => {
     try {
@@ -296,6 +309,7 @@ export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
     event.preventDefault();
     const trimmed = query.trim();
     if (trimmed) {
+      lastUrlQuery.current = trimmed;
       const params = new URLSearchParams();
       params.set("q", trimmed);
       router.push(`/?${params.toString()}`, { scroll: false });
@@ -303,8 +317,14 @@ export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
     await runSearch(1, false);
   }
 
-  async function runSearch(nextPage: number, append: boolean) {
-    if (!canSearch) {
+  async function runSearch(
+    nextPage: number,
+    append: boolean,
+    overrides?: { query?: string; categories?: string[] },
+  ) {
+    const targetQuery = (overrides?.query ?? query).trim();
+    const targetCategories = overrides?.categories ?? selectedSearxngCategories;
+    if (!targetQuery || (selectedEngines.length === 0 && targetCategories.length === 0) || searching) {
       return;
     }
 
@@ -321,9 +341,9 @@ export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          query,
+          query: targetQuery,
           engines: selectedEngines,
-          categories: selectedSearxngCategories,
+          categories: targetCategories,
           whitelistMode,
           filterRules,
           language,
