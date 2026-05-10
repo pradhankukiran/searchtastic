@@ -65,7 +65,7 @@ export async function searchSearxng({
   url.searchParams.set("format", "json");
   url.searchParams.set("pageno", String(pageno));
   url.searchParams.set("safesearch", safeSearch);
-  url.searchParams.set("image_proxy", String(imageProxy));
+  url.searchParams.set("image_proxy", imageProxy ? "1" : "0");
 
   if (engines.length > 0) {
     url.searchParams.set("engines", engines.join(","));
