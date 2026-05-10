@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   AlertCircle,
@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ShieldX,
   SlidersHorizontal,
+  XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -136,6 +137,8 @@ export function SearchApp() {
   const [lenses, setLenses] = useState<Lens[]>([]);
   const [savingLens, setSavingLens] = useState(false);
   const [newLensName, setNewLensName] = useState("");
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [ruleScope, setRuleScope] = useState<RuleScopeId>("global");
   const [filterRules, setFilterRules] = useState<SearchFilterRules>({
     global: emptyRuleScope,
@@ -191,6 +194,74 @@ export function SearchApp() {
       // localStorage unavailable — silently skip.
     }
   }, [lenses]);
+
+  useEffect(() => {
+    function navigateResult(delta: number) {
+      const articles = document.querySelectorAll<HTMLElement>("[data-result-index]");
+      if (articles.length === 0) return;
+      let currentIndex = -1;
+      articles.forEach((article, idx) => {
+        if (article.contains(document.activeElement)) currentIndex = idx;
+      });
+      const next =
+        currentIndex < 0
+          ? delta > 0
+            ? 0
+            : articles.length - 1
+          : Math.max(0, Math.min(articles.length - 1, currentIndex + delta));
+      const target = articles[next];
+      if (!target) return;
+      target.querySelector<HTMLAnchorElement>("a[href]")?.focus();
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+
+    function onKey(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName ?? "";
+      const inField =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        Boolean(target?.isContentEditable);
+
+      if (event.key === "Escape" && target === searchInputRef.current) {
+        searchInputRef.current?.blur();
+        return;
+      }
+
+      if (inField) return;
+
+      if (event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      } else if (event.key === "f") {
+        event.preventDefault();
+        setFiltersOpen(true);
+      } else if (event.key === "?") {
+        event.preventDefault();
+        setShortcutsOpen(true);
+      } else if (event.key === "j") {
+        event.preventDefault();
+        navigateResult(1);
+      } else if (event.key === "k") {
+        event.preventDefault();
+        navigateResult(-1);
+      }
+    }
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    if (!shortcutsOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setShortcutsOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shortcutsOpen]);
 
   const selectedCount = selectedEngines.length;
   const canSearch = query.trim().length > 0 && (selectedCount > 0 || selectedSearxngCategories.length > 0) && !searching;
@@ -489,6 +560,7 @@ export function SearchApp() {
                   <div className="relative flex-1">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
+                      ref={searchInputRef}
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
                       placeholder="Search the web, or use !github / !science / :fr"
@@ -654,8 +726,12 @@ export function SearchApp() {
                 </div>
               ) : hasResults ? (
                 <div className="divide-y">
-                  {results.map((result) => (
-                    <article key={result.url} className="px-4 py-4 transition-colors hover:bg-muted/40">
+                  {results.map((result, index) => (
+                    <article
+                      key={result.url}
+                      data-result-index={index}
+                      className="px-4 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/60"
+                    >
                       <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
                         <div className="flex min-w-0 items-center gap-2">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -949,7 +1025,68 @@ export function SearchApp() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {shortcutsOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="shortcuts-title"
+          onClick={() => setShortcutsOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-[1px]"
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-md rounded-md border bg-background p-6 shadow-xl"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <h2
+                  id="shortcuts-title"
+                  className="font-heading text-lg font-medium tracking-tight"
+                >
+                  Keyboard shortcuts
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Press <Kbd>?</Kbd> any time to open this list.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShortcutsOpen(false)}
+                className="rounded-sm text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="Close"
+              >
+                <XIcon className="size-4" />
+              </button>
+            </div>
+            <dl className="mt-5 grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2.5 text-sm">
+              <dt><Kbd>/</Kbd></dt>
+              <dd>Focus search</dd>
+              <dt><Kbd>j</Kbd></dt>
+              <dd>Next result</dd>
+              <dt><Kbd>k</Kbd></dt>
+              <dd>Previous result</dd>
+              <dt><Kbd>Enter</Kbd></dt>
+              <dd>Open focused result</dd>
+              <dt><Kbd>f</Kbd></dt>
+              <dd>Open filters</dd>
+              <dt><Kbd>?</Kbd></dt>
+              <dd>Show this help</dd>
+              <dt><Kbd>Esc</Kbd></dt>
+              <dd>Close panel or clear focus</dd>
+            </dl>
+          </div>
+        </div>
+      ) : null}
     </main>
+  );
+}
+
+function Kbd({ children }: { children: ReactNode }) {
+  return (
+    <kbd className="inline-flex min-w-7 items-center justify-center rounded-md border bg-muted px-1.5 py-0.5 font-mono text-xs font-medium text-foreground">
+      {children}
+    </kbd>
   );
 }
 
