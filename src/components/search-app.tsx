@@ -267,6 +267,26 @@ export function SearchApp() {
 
   const hasResults = results.length > 0;
   const bangTokens = useMemo(() => query.match(/(^|\s)(![^\s!]+|:[^\s]+)/g)?.map((token) => token.trim()) ?? [], [query]);
+  const customRulesCount = useMemo(() => {
+    const countScope = (scope?: { whitelist?: string[]; blacklist?: string[] }) =>
+      (scope?.whitelist?.length ?? 0) + (scope?.blacklist?.length ?? 0);
+    let total = countScope(filterRules.global);
+    for (const value of Object.values(filterRules.categories ?? {})) total += countScope(value);
+    for (const value of Object.values(filterRules.engines ?? {})) total += countScope(value);
+    return total;
+  }, [filterRules]);
+  const timeRangeLabel = timeRanges.find((item) => item.value === timeRange)?.label ?? timeRange;
+  const safeSearchLabel = safeSearchLevels.find((item) => item.value === safeSearch)?.label ?? safeSearch;
+  const enginesPartial = engines.length > 0 && selectedEngines.length !== engines.length;
+  const hasActiveFilters =
+    enginesPartial ||
+    selectedSearxngCategories.length > 0 ||
+    Boolean(language) ||
+    Boolean(timeRange) ||
+    safeSearch !== "0" ||
+    whitelistMode !== "off" ||
+    !imageProxy ||
+    customRulesCount > 0;
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -342,6 +362,45 @@ export function SearchApp() {
                       {token}
                     </Badge>
                   ))}
+                </div>
+              ) : null}
+
+              {hasActiveFilters ? (
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  {enginesPartial ? (
+                    <FilterChip onClick={() => setFiltersOpen(true)}>
+                      {selectedEngines.length} engines
+                    </FilterChip>
+                  ) : null}
+                  {selectedSearxngCategories.length > 0 ? (
+                    <FilterChip onClick={() => setFiltersOpen(true)}>
+                      {selectedSearxngCategories.join(", ")}
+                    </FilterChip>
+                  ) : null}
+                  {language ? (
+                    <FilterChip onClick={() => setFiltersOpen(true)}>{language}</FilterChip>
+                  ) : null}
+                  {timeRange ? (
+                    <FilterChip onClick={() => setFiltersOpen(true)}>{timeRangeLabel}</FilterChip>
+                  ) : null}
+                  {safeSearch !== "0" ? (
+                    <FilterChip onClick={() => setFiltersOpen(true)}>
+                      Safe: {safeSearchLabel}
+                    </FilterChip>
+                  ) : null}
+                  {whitelistMode !== "off" ? (
+                    <FilterChip onClick={() => setFiltersOpen(true)}>
+                      Whitelist: {whitelistMode}
+                    </FilterChip>
+                  ) : null}
+                  {!imageProxy ? (
+                    <FilterChip onClick={() => setFiltersOpen(true)}>No image proxy</FilterChip>
+                  ) : null}
+                  {customRulesCount > 0 ? (
+                    <FilterChip onClick={() => setFiltersOpen(true)}>
+                      {customRulesCount} custom rule{customRulesCount === 1 ? "" : "s"}
+                    </FilterChip>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -694,6 +753,18 @@ export function SearchApp() {
         </SheetContent>
       </Sheet>
     </main>
+  );
+}
+
+function FilterChip({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground"
+    >
+      {children}
+    </button>
   );
 }
 
