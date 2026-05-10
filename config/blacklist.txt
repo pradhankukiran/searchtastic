@@ -1,0 +1,7 @@
+# Always remove these domains from results.
+# One domain per line. Subdomains match automatically.
+pinterest.com
+quora.com
+medium.com
+facebook.com
+tiktok.com

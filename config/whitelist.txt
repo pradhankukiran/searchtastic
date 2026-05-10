@@ -1,0 +1,7 @@
+# Prefer or restrict to these domains when whitelist mode is enabled.
+# One domain per line. Subdomains match automatically.
+docs.python.org
+developer.mozilla.org
+github.com
+stackoverflow.com
+wikipedia.org

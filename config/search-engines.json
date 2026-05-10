@@ -1,0 +1,27 @@
+[
+  {
+    "id": "google",
+    "name": "Google",
+    "enabled": true
+  },
+  {
+    "id": "bing",
+    "name": "Bing",
+    "enabled": true
+  },
+  {
+    "id": "duckduckgo",
+    "name": "DuckDuckGo",
+    "enabled": true
+  },
+  {
+    "id": "brave",
+    "name": "Brave",
+    "enabled": false
+  },
+  {
+    "id": "startpage",
+    "name": "Startpage",
+    "enabled": false
+  }
+]
