@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 
-import { AppHeader } from "@/components/app-header";
 import { Toaster } from "@/components/ui/sonner";
 import { readDomainList, readSearchEngines } from "@/lib/search/config";
 import { AppConfigProvider, type AppConfig } from "@/lib/search/config-context";
@@ -101,7 +100,6 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <AppConfigProvider value={config}>
-          <AppHeader />
           <main className="flex flex-1 flex-col">{children}</main>
         </AppConfigProvider>
         <Toaster />

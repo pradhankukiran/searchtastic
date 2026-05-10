@@ -2,13 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppConfig } from "@/lib/search/config-context";
@@ -66,7 +59,7 @@ function writeScope(
   return { ...rules, [key]: next };
 }
 
-export default function SettingsPage() {
+export function DomainRulesEditor() {
   const config = useAppConfig();
   const hydrated = useRef(false);
   const [rules, setRules] = useState<SearchFilterRules>(() => ({
@@ -111,55 +104,43 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
-      <Card className="rounded-md shadow-sm">
-        <CardHeader>
-          <CardTitle className="font-heading text-lg font-medium tracking-tight">
-            Domain rules
-          </CardTitle>
-          <CardDescription>
-            One domain per line. Saved to your browser and applied to every search.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <select
-            value={scope}
-            onChange={(event) => setScope(event.target.value as RuleScopeId)}
-            className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="global">Global rules</option>
-            {categories.map((category) => (
-              <option key={category} value={`category:${category}`}>
-                Category: {category}
-              </option>
-            ))}
-            {engines.map((engine) => (
-              <option key={engine.id} value={`engine:${engine.id}`}>
-                Engine: {engine.name}
-              </option>
-            ))}
-          </select>
+    <div className="space-y-4">
+      <select
+        value={scope}
+        onChange={(event) => setScope(event.target.value as RuleScopeId)}
+        className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <option value="global">Global rules</option>
+        {categories.map((category) => (
+          <option key={category} value={`category:${category}`}>
+            Category: {category}
+          </option>
+        ))}
+        {engines.map((engine) => (
+          <option key={engine.id} value={`engine:${engine.id}`}>
+            Engine: {engine.name}
+          </option>
+        ))}
+      </select>
 
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-muted-foreground">Whitelist</Label>
-            <Textarea
-              value={(currentScope.whitelist ?? []).join("\n")}
-              onChange={(event) => updateScope("whitelist", event.target.value)}
-              placeholder="example.com"
-              className="min-h-32 resize-y font-mono text-xs"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-muted-foreground">Blacklist</Label>
-            <Textarea
-              value={(currentScope.blacklist ?? []).join("\n")}
-              onChange={(event) => updateScope("blacklist", event.target.value)}
-              placeholder="spam.example"
-              className="min-h-32 resize-y font-mono text-xs"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-2">
+        <Label className="text-xs font-medium text-muted-foreground">Whitelist</Label>
+        <Textarea
+          value={(currentScope.whitelist ?? []).join("\n")}
+          onChange={(event) => updateScope("whitelist", event.target.value)}
+          placeholder="example.com"
+          className="min-h-32 resize-y font-mono text-xs"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label className="text-xs font-medium text-muted-foreground">Blacklist</Label>
+        <Textarea
+          value={(currentScope.blacklist ?? []).join("\n")}
+          onChange={(event) => updateScope("blacklist", event.target.value)}
+          placeholder="spam.example"
+          className="min-h-32 resize-y font-mono text-xs"
+        />
+      </div>
     </div>
   );
 }

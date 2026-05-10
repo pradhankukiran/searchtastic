@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -10,6 +9,7 @@ import {
   Layers3,
   Loader2,
   Search,
+  Settings,
   ShieldCheck,
   ShieldX,
   SlidersHorizontal,
@@ -23,12 +23,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Modal,
+  ModalContent,
+  ModalDescription,
+  ModalHeader,
+  ModalTitle,
+} from "@/components/ui/modal";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { DomainRulesEditor } from "@/components/domain-rules-editor";
 import { useAppConfig } from "@/lib/search/config-context";
 import { cn } from "@/lib/utils";
 import type {
@@ -106,6 +114,7 @@ export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
   const [enabledPlugins, setEnabledPlugins] = useState<string[]>(["Tracker_URL_remover", "Ahmia_blacklist"]);
   const [imageProxy, setImageProxy] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [lenses, setLenses] = useState<Lens[]>([]);
   const [savingLens, setSavingLens] = useState(false);
   const [newLensName, setNewLensName] = useState("");
@@ -499,6 +508,16 @@ export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
                     <SlidersHorizontal className="size-4" />
                     Filters
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSettingsOpen(true)}
+                    className="h-14 w-14"
+                    aria-label="Settings"
+                  >
+                    <Settings className="size-4" />
+                  </Button>
                   <Button type="submit" disabled={!canSearch} className="h-14 min-w-28">
                     {searching ? (
                       <Loader2 className="size-4 animate-spin" />
@@ -587,12 +606,13 @@ export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
                   <FilterChip onClick={() => setFiltersOpen(true)}>No image proxy</FilterChip>
                 ) : null}
                 {customRulesCount > 0 ? (
-                  <Link
-                    href="/settings"
+                  <button
+                    type="button"
+                    onClick={() => setSettingsOpen(true)}
                     className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     {customRulesCount} custom rule{customRulesCount === 1 ? "" : "s"}
-                  </Link>
+                  </button>
                 ) : null}
               </div>
             ) : null}
@@ -634,6 +654,15 @@ export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
                     aria-label="Filters"
                   >
                     <SlidersHorizontal className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setSettingsOpen(true)}
+                    className="h-11"
+                    aria-label="Settings"
+                  >
+                    <Settings className="size-4" />
                   </Button>
                   <Button
                     type="submit"
@@ -731,12 +760,13 @@ export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
                     <FilterChip onClick={() => setFiltersOpen(true)}>No image proxy</FilterChip>
                   ) : null}
                   {customRulesCount > 0 ? (
-                    <Link
-                      href="/settings"
+                    <button
+                      type="button"
+                      onClick={() => setSettingsOpen(true)}
                       className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
                       {customRulesCount} custom rule{customRulesCount === 1 ? "" : "s"}
-                    </Link>
+                    </button>
                   ) : null}
                 </div>
               ) : null}
@@ -1086,22 +1116,37 @@ export function SearchApp({ initialQuery = "" }: { initialQuery?: string }) {
 
             <section className="space-y-2">
               <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Domain rules</div>
-              <Link
-                href="/settings"
-                onClick={() => setFiltersOpen(false)}
-                className="flex items-center justify-between rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:bg-muted"
+              <button
+                type="button"
+                onClick={() => {
+                  setFiltersOpen(false);
+                  setSettingsOpen(true);
+                }}
+                className="flex w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
               >
                 <span>
                   {customRulesCount > 0
                     ? `${customRulesCount} custom rule${customRulesCount === 1 ? "" : "s"}`
                     : "Manage whitelists and blacklists"}
                 </span>
-                <span className="text-xs text-muted-foreground">Open settings →</span>
-              </Link>
+                <span className="text-xs text-muted-foreground">Open →</span>
+              </button>
             </section>
           </div>
         </SheetContent>
       </Sheet>
+
+      <Modal open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Settings</ModalTitle>
+            <ModalDescription>
+              Domain whitelists and blacklists, scoped globally or per category/engine.
+            </ModalDescription>
+          </ModalHeader>
+          <DomainRulesEditor />
+        </ModalContent>
+      </Modal>
 
       {shortcutsOpen ? (
         <div
