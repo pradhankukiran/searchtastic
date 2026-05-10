@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -37,7 +38,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type {
   DomainRuleScope,
@@ -79,8 +79,6 @@ const whitelistModes: Array<{ id: WhitelistMode; label: string }> = [
   { id: "only", label: "Only" },
 ];
 
-type RuleScopeId = "global" | `category:${string}` | `engine:${string}`;
-
 type Lens = {
   id: string;
   name: string;
@@ -96,6 +94,7 @@ type Lens = {
 };
 
 const LENSES_STORAGE_KEY = "searchtastic.lenses.v1";
+const RULES_STORAGE_KEY = "searchtastic.filter-rules.v1";
 
 const emptyRuleScope: DomainRuleScope = {
   whitelist: [],
@@ -139,7 +138,6 @@ export function SearchApp() {
   const [newLensName, setNewLensName] = useState("");
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [ruleScope, setRuleScope] = useState<RuleScopeId>("global");
   const [filterRules, setFilterRules] = useState<SearchFilterRules>({
     global: emptyRuleScope,
     categories: {},
@@ -148,6 +146,14 @@ export function SearchApp() {
 
   useEffect(() => {
     async function loadConfig() {
+      let savedRules: SearchFilterRules | null = null;
+      try {
+        const raw = window.localStorage.getItem(RULES_STORAGE_KEY);
+        if (raw) savedRules = JSON.parse(raw) as SearchFilterRules;
+      } catch {
+        savedRules = null;
+      }
+
       try {
         const response = await fetch("/api/config");
         const nextConfig = (await response.json()) as ConfigResponse;
@@ -155,14 +161,16 @@ export function SearchApp() {
         setConfig(nextConfig);
         setEngines(nextConfig.engines);
         setSelectedEngines(nextConfig.engines.filter((engine) => engine.enabled).map((engine) => engine.id));
-        setFilterRules({
-          global: {
-            whitelist: nextConfig.lists.whitelist,
-            blacklist: nextConfig.lists.blacklist,
+        setFilterRules(
+          savedRules ?? {
+            global: {
+              whitelist: nextConfig.lists.whitelist,
+              blacklist: nextConfig.lists.blacklist,
+            },
+            categories: {},
+            engines: {},
           },
-          categories: {},
-          engines: {},
-        });
+        );
       } catch {
         toast.error("Could not load Searchtastic config.");
       } finally {
@@ -172,6 +180,15 @@ export function SearchApp() {
 
     loadConfig();
   }, []);
+
+  useEffect(() => {
+    if (loadingConfig) return;
+    try {
+      window.localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(filterRules));
+    } catch {
+      // localStorage unavailable — silently skip.
+    }
+  }, [filterRules, loadingConfig]);
 
   useEffect(() => {
     try {
@@ -274,8 +291,6 @@ export function SearchApp() {
       })),
     [categories, engines],
   );
-  const currentRules = getRuleScope(filterRules, ruleScope);
-
   const listSummary = useMemo(() => {
     if (!config) {
       return "Lists unavailable";
@@ -306,12 +321,6 @@ export function SearchApp() {
     setEnabledPlugins((current) =>
       current.includes(plugin) ? current.filter((item) => item !== plugin) : [...current, plugin],
     );
-  }
-
-  function updateRules(kind: keyof DomainRuleScope, value: string) {
-    const domains = parseDomainText(value);
-
-    setFilterRules((current) => setRuleScopeRules(current, ruleScope, kind, domains));
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -623,9 +632,12 @@ export function SearchApp() {
                     <FilterChip onClick={() => setFiltersOpen(true)}>No image proxy</FilterChip>
                   ) : null}
                   {customRulesCount > 0 ? (
-                    <FilterChip onClick={() => setFiltersOpen(true)}>
+                    <Link
+                      href="/settings"
+                      className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
                       {customRulesCount} custom rule{customRulesCount === 1 ? "" : "s"}
-                    </FilterChip>
+                    </Link>
                   ) : null}
                 </div>
               ) : null}
@@ -984,43 +996,20 @@ export function SearchApp() {
               </div>
             </section>
 
-            <section className="space-y-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Rule scope</div>
-              <select
-                value={ruleScope}
-                onChange={(event) => setRuleScope(event.target.value as RuleScopeId)}
-                className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            <section className="space-y-2">
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Domain rules</div>
+              <Link
+                href="/settings"
+                onClick={() => setFiltersOpen(false)}
+                className="flex items-center justify-between rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:bg-muted"
               >
-                <option value="global">Global rules</option>
-                {categories.map((category) => (
-                  <option key={category} value={`category:${category}`}>
-                    Category: {category}
-                  </option>
-                ))}
-                {engines.map((engine) => (
-                  <option key={engine.id} value={`engine:${engine.id}`}>
-                    Engine: {engine.name}
-                  </option>
-                ))}
-              </select>
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground">Whitelist</Label>
-                <Textarea
-                  value={(currentRules.whitelist ?? []).join("\n")}
-                  onChange={(event) => updateRules("whitelist", event.target.value)}
-                  placeholder="example.com"
-                  className="min-h-24 resize-y font-mono text-xs"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground">Blacklist</Label>
-                <Textarea
-                  value={(currentRules.blacklist ?? []).join("\n")}
-                  onChange={(event) => updateRules("blacklist", event.target.value)}
-                  placeholder="spam.example"
-                  className="min-h-24 resize-y font-mono text-xs"
-                />
-              </div>
+                <span>
+                  {customRulesCount > 0
+                    ? `${customRulesCount} custom rule${customRulesCount === 1 ? "" : "s"}`
+                    : "Manage whitelists and blacklists"}
+                </span>
+                <span className="text-xs text-muted-foreground">Open settings →</span>
+              </Link>
             </section>
           </div>
         </SheetContent>
@@ -1279,70 +1268,6 @@ function EmptyState() {
       </p>
     </div>
   );
-}
-
-function parseDomainText(value: string) {
-  return value
-    .split(/[\n,]/)
-    .map((domain) => domain.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function getRuleScope(filterRules: SearchFilterRules, scopeId: RuleScopeId): DomainRuleScope {
-  if (scopeId === "global") {
-    return {
-      whitelist: filterRules.global?.whitelist ?? [],
-      blacklist: filterRules.global?.blacklist ?? [],
-    };
-  }
-
-  const [scope, id] = splitScope(scopeId);
-  const rules = scope === "category" ? filterRules.categories?.[id] : filterRules.engines?.[id];
-
-  return {
-    whitelist: rules?.whitelist ?? [],
-    blacklist: rules?.blacklist ?? [],
-  };
-}
-
-function setRuleScopeRules(
-  filterRules: SearchFilterRules,
-  scopeId: RuleScopeId,
-  kind: keyof DomainRuleScope,
-  domains: string[],
-): SearchFilterRules {
-  if (scopeId === "global") {
-    return {
-      ...filterRules,
-      global: {
-        whitelist: filterRules.global?.whitelist ?? [],
-        blacklist: filterRules.global?.blacklist ?? [],
-        [kind]: domains,
-      },
-    };
-  }
-
-  const [scope, id] = splitScope(scopeId);
-  const key = scope === "category" ? "categories" : "engines";
-  const currentScope = filterRules[key]?.[id] ?? emptyRuleScope;
-
-  return {
-    ...filterRules,
-    [key]: {
-      ...filterRules[key],
-      [id]: {
-        whitelist: currentScope.whitelist ?? [],
-        blacklist: currentScope.blacklist ?? [],
-        [kind]: domains,
-      },
-    },
-  };
-}
-
-function splitScope(scopeId: Exclude<RuleScopeId, "global">) {
-  const index = scopeId.indexOf(":");
-
-  return [scopeId.slice(0, index), scopeId.slice(index + 1)] as ["category" | "engine", string];
 }
 
 function engineName(engines: SearchEngine[], engineId: string) {
