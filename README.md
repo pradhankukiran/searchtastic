@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Searchtastic
 
-## Getting Started
+Searchtastic is a Next.js metasearch app that queries a SearXNG instance, removes blacklisted domains, and can prefer or require whitelisted domains.
 
-First, run the development server:
+## Local Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set `SEARXNG_URL` to your SearXNG base URL:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+SEARXNG_URL=http://localhost:8080
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app reads these files at runtime:
 
-## Learn More
+- `config/search-engines.json`
+- `config/whitelist.txt`
+- `config/blacklist.txt`
 
-To learn more about Next.js, take a look at the following resources:
+## SearXNG Test
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The app expects JSON output from SearXNG:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+curl "https://your-searxng-host/search?q=test&engines=google,bing&format=json"
+```
 
-## Deploy on Vercel
+## Railway Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Create two Railway services.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 1. SearXNG service
+
+Use `deploy/searxng/Dockerfile` as the Dockerfile for this service.
+
+Variables:
+
+```bash
+SEARXNG_SECRET=<long-random-string>
+SEARXNG_BASE_URL=https://<your-searxng-domain>/
+```
+
+After deploy, confirm JSON works:
+
+```bash
+curl "https://<your-searxng-domain>/search?q=test&engines=google,bing&format=json"
+```
+
+### 2. Web service
+
+Use the root `Dockerfile` for this service.
+
+Variables:
+
+```bash
+SEARXNG_URL=https://<your-searxng-domain>
+```
+
+Deploy the web service after the SearXNG URL is available.
