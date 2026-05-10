@@ -128,6 +128,7 @@ export function SearchApp() {
   const [newLensName, setNewLensName] = useState("");
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const lensesHydrated = useRef(false);
   const [filterRules, setFilterRules] = useState<SearchFilterRules>({
     global: emptyRuleScope,
     categories: {},
@@ -183,18 +184,22 @@ export function SearchApp() {
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(LENSES_STORAGE_KEY);
-      if (!stored) return;
-      const parsed = JSON.parse(stored) as unknown;
-      if (Array.isArray(parsed)) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setLenses(parsed as Lens[]);
+      if (stored) {
+        const parsed = JSON.parse(stored) as unknown;
+        if (Array.isArray(parsed)) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setLenses(parsed as Lens[]);
+        }
       }
     } catch {
       // localStorage unavailable or corrupted — start fresh.
+    } finally {
+      lensesHydrated.current = true;
     }
   }, []);
 
   useEffect(() => {
+    if (!lensesHydrated.current) return;
     try {
       window.localStorage.setItem(LENSES_STORAGE_KEY, JSON.stringify(lenses));
     } catch {
@@ -385,30 +390,47 @@ export function SearchApp() {
     !imageProxy ||
     customRulesCount > 0;
 
+  const lensSignatures = useMemo(() => {
+    const sortJoin = (values: string[]) => [...values].sort().join(" ");
+    return lenses.map((lens) => ({
+      id: lens.id,
+      engines: sortJoin(lens.engines),
+      categories: sortJoin(lens.categories),
+      plugins: sortJoin(lens.plugins),
+      language: lens.language,
+      timeRange: lens.timeRange,
+      safeSearch: lens.safeSearch,
+      imageProxy: lens.imageProxy,
+      whitelistMode: lens.whitelistMode,
+      rulesJson: JSON.stringify(lens.filterRules),
+    }));
+  }, [lenses]);
+
   const activeLensId = useMemo(() => {
-    const sortJoin = (values: string[]) => [...values].sort().join(" ");
-    const ruleJson = JSON.stringify(filterRules);
+    if (lensSignatures.length === 0) return null;
+    const sortJoin = (values: string[]) => [...values].sort().join(" ");
     const enginesKey = sortJoin(selectedEngines);
     const categoriesKey = sortJoin(selectedSearxngCategories);
     const pluginsKey = sortJoin(enabledPlugins);
-    for (const lens of lenses) {
+    const ruleJson = JSON.stringify(filterRules);
+    for (const sig of lensSignatures) {
       if (
-        sortJoin(lens.engines) === enginesKey &&
-        sortJoin(lens.categories) === categoriesKey &&
-        sortJoin(lens.plugins) === pluginsKey &&
-        lens.language === language &&
-        lens.timeRange === timeRange &&
-        lens.safeSearch === safeSearch &&
-        lens.imageProxy === imageProxy &&
-        lens.whitelistMode === whitelistMode &&
-        JSON.stringify(lens.filterRules) === ruleJson
+        sig.engines === enginesKey &&
+        sig.categories === categoriesKey &&
+        sig.plugins === pluginsKey &&
+        sig.language === language &&
+        sig.timeRange === timeRange &&
+        sig.safeSearch === safeSearch &&
+        sig.imageProxy === imageProxy &&
+        sig.whitelistMode === whitelistMode &&
+        sig.rulesJson === ruleJson
       ) {
-        return lens.id;
+        return sig.id;
       }
     }
     return null;
   }, [
-    lenses,
+    lensSignatures,
     selectedEngines,
     selectedSearxngCategories,
     enabledPlugins,
@@ -419,6 +441,11 @@ export function SearchApp() {
     whitelistMode,
     filterRules,
   ]);
+
+  const engineNameById = useMemo(
+    () => new Map(engines.map((engine) => [engine.id, engine.name])),
+    [engines],
+  );
 
   function applyLens(lens: Lens) {
     setSelectedEngines(lens.engines);
@@ -851,7 +878,7 @@ export function SearchApp() {
                           ) : null}
                         </div>
                         <span className="shrink-0 text-xs uppercase tracking-wider text-muted-foreground/80">
-                          {engineName(engines, result.engine)}
+                          {engineNameById.get(result.engine) ?? result.engine}
                         </span>
                       </div>
                       <a
@@ -1368,10 +1395,6 @@ function EmptyState() {
       </p>
     </div>
   );
-}
-
-function engineName(engines: SearchEngine[], engineId: string) {
-  return engines.find((engine) => engine.id === engineId)?.name ?? engineId;
 }
 
 function mergeResults(current: SearchResult[], next: SearchResult[]) {
